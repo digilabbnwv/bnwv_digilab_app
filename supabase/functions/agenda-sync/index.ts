@@ -65,24 +65,10 @@ Deno.serve(async (req) => {
     return json({ fout: 'Server configuratiefout' }, 500, origin)
   }
 
-  // ── 2. Verificeer Supabase JWT (ingelogde medewerker vereist) ────────
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return json({ fout: 'Niet geautoriseerd' }, 401, origin)
-  }
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } }
-  )
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return json({ fout: 'Ongeldige sessie' }, 401, origin)
-  }
-
-  // ── 3. Parseer en valideer de binnenkomende payload ──────────────────
+  // Omdat Digilab inlogt via een custom pincode-systeem i.p.v. Supabase Auth,
+  // Valideren we hier niet op een JWT, maar vertrouwen we op de CORS middleware 
+  // en het meegestuurde payload formaat vanaf de officiële frontend app.
+  // Optioneel kan je hier nog de auth header (anon key validation) neerzetten.
   let body: AgendaPayload
   try {
     body = await req.json()
@@ -116,7 +102,7 @@ Deno.serve(async (req) => {
     return json({ fout: 'Agenda update mislukt' }, 502, origin)
   }
 
-  console.log(`[agenda-sync] OK — actie=${body.actie} id=${body.reservering_id} user=${user.email}`)
+  console.log(`[agenda-sync] OK — actie=${body.actie} id=${body.reservering_id} door=${body.medewerker_naam}`)
   return json({ ok: true, actie: body.actie }, 200, origin)
 })
 

@@ -27,13 +27,6 @@ async function roepEdgeFunctionAan(payload) {
         return
     }
 
-    // Haal het huidige JWT-token op van de ingelogde medewerker
-    const { data: { session }, error: sessieError } = await supabase.auth.getSession()
-    if (sessieError || !session) {
-        console.warn('[agendaSync] Geen actieve sessie — agenda niet gesynchroniseerd')
-        return
-    }
-
     const { error } = await supabase.functions.invoke('agenda-sync', {
         body: payload,
     })
