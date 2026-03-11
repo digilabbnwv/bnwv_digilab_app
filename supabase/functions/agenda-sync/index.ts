@@ -21,7 +21,7 @@ const DIGILAB_WEBHOOK_SECRET     = Deno.env.get('DIGILAB_WEBHOOK_SECRET')
 const TOEGESTANE_ORIGIN          = Deno.env.get('TOEGESTANE_ORIGIN') ?? '*'
 
 // ── Toegestane acties ──────────────────────────────────────────────────────
-const TOEGESTANE_ACTIES = ['aanmaken', 'annuleren'] as const
+const TOEGESTANE_ACTIES = ['aanmaken', 'annuleren', 'wijzigen'] as const
 type Actie = typeof TOEGESTANE_ACTIES[number]
 
 // ── Payload die naar Power Automate wordt gestuurd ────────────────────────

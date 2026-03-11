@@ -82,3 +82,22 @@ export async function syncAgendaAnnuleren(reservering) {
         toelichting:     reservering.toelichting ?? undefined,
     })
 }
+
+/**
+ * Wijzig een bestaand agenda-item in Outlook via Power Automate.
+ * Let op: vereist de toevoeging in backend en app van 'wijzigen' als type.
+ *
+ * @param {object} reservering - Reserveringsobject met de nieuwe aanpassingen
+ */
+export async function syncAgendaWijzigen(reservering) {
+    await roepEdgeFunctionAan({
+        actie:           'wijzigen',
+        reservering_id:  reservering.id,
+        product_naam:    reservering.materiaal?.naam    ?? 'Onbekend product',
+        product_code:    reservering.materiaal?.qr_code ?? 'ONBEKEND',
+        medewerker_naam: reservering.medewerker?.naam   ?? 'Onbekende medewerker',
+        van_datum:       reservering.van_datum,
+        tot_datum:       reservering.tot_datum,
+        toelichting:     reservering.toelichting ?? undefined,
+    })
+}
