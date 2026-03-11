@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   // Zorgt ervoor dat Playwright zelf de development server opstart voordat hij begint met testen
   webServer: {
-    command: '.\\node_bin\\node.exe .\\node_modules\\vite\\bin\\vite.js',
+    command: process.env.CI ? 'npm run dev' : '.\\node_bin\\node.exe .\\node_modules\\vite\\bin\\vite.js',
     url: 'http://localhost:5173/',
     reuseExistingServer: !process.env.CI,
   },

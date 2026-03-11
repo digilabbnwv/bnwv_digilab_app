@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "prepare": "node .\\node_modules\\husky\\bin.js"
+    "prepare": "node ./node_modules/husky/bin.js"
   },
   "lint-staged": {
     "*.{js,jsx}": [
