@@ -39,9 +39,9 @@ interface AgendaPayload {
 // ── CORS headers ───────────────────────────────────────────────────────────
 function corsHeaders(origin: string) {
   return {
-    'Access-Control-Allow-Origin':  TOEGESTANE_ORIGIN === '*' ? origin : TOEGESTANE_ORIGIN,
+    'Access-Control-Allow-Origin':  TOEGESTANE_ORIGIN === '*' ? '*' : TOEGESTANE_ORIGIN,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   }
 }
 
