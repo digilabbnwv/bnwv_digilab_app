@@ -31,6 +31,7 @@ interface AgendaPayload {
   product_naam:    string
   product_code:    string
   medewerker_naam: string
+  medewerker_email: string
   van_datum:       string   // YYYY-MM-DD
   tot_datum:       string   // YYYY-MM-DD
   toelichting?:    string
@@ -128,7 +129,7 @@ function valideerPayload(body: unknown): string | null {
 
   const verplicht: (keyof AgendaPayload)[] = [
     'reservering_id', 'product_naam', 'product_code',
-    'medewerker_naam', 'van_datum', 'tot_datum',
+    'medewerker_naam', 'medewerker_email', 'van_datum', 'tot_datum',
   ]
   for (const veld of verplicht) {
     if (!p[veld] || typeof p[veld] !== 'string' || !(p[veld] as string).trim())
