@@ -105,19 +105,22 @@ export default function ProfielPagina() {
                         { key: 'licht', label: 'Licht', icon: Sun },
                         { key: 'systeem', label: 'Systeem', icon: Monitor },
                         { key: 'donker', label: 'Donker', icon: Moon },
-                    ].map(({ key, label, icon: ThemaIcon }) => (
-                        <button
-                            key={key}
-                            onClick={() => setThema(key)}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${thema === key
-                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                : 'text-text-muted hover:text-text-secondary'
-                                }`}
-                        >
-                            <ThemaIcon size={14} />
-                            {label}
-                        </button>
-                    ))}
+                    ].map((item) => {
+                        const Icon = item.icon
+                        return (
+                            <button
+                                key={item.key}
+                                onClick={() => setThema(item.key)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${thema === item.key
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                    : 'text-text-muted hover:text-text-secondary'
+                                    }`}
+                            >
+                                <Icon size={14} />
+                                {item.label}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 
@@ -127,7 +130,7 @@ export default function ProfielPagina() {
                     onClick={() => { setToonPinWijzigen(true); setPinStap(1); setPinFout(''); setPinSucces(false) }}
                     className="w-full flex items-center gap-3 p-4 hover:bg-bg-hover transition-colors text-left"
                 >
-                    <key className="text-primary"><Key size={18} /></key>
+                    <span className="text-primary"><Key size={18} /></span>
                     <div className="flex-1">
                         <p className="text-text-primary font-medium text-sm">Pincode wijzigen</p>
                     </div>
