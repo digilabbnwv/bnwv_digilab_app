@@ -30,9 +30,10 @@ export default function BottomNav() {
                         }
                     >
                         <IconComp size={item.accent ? 22 : 20} />
-                        <span className={`text-xs font-medium ${accent ? '' : ''}`}>{label}</span>
+                        <span className={`text-xs font-medium ${item.accent ? '' : ''}`}>{item.label}</span>
                     </NavLink>
-                ))}
+                    )
+                })}
             </div>
         </nav>
     )
