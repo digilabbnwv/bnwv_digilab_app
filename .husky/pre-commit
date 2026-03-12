@@ -1,1 +1,2 @@
+export PATH="./node_bin:$PATH"
 ./node_bin/node.exe ./node_modules/lint-staged/bin/lint-staged.js

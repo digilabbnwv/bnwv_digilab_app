@@ -13,8 +13,8 @@ module.exports = {
         'text-primary':   '#EAF0FF',
         'text-secondary': '#9AA8C7',
         'text-muted':     '#64748B',
-        'primary':        '#7C3AED',
-        'primary-end':    '#A855F7',
+        'primary':        '#E8772E',
+        'primary-end':    '#F5A623',
         'accent':         '#F59E0B',
         'accent-end':     '#FB923C',
         'success':        '#10B981',
@@ -24,7 +24,7 @@ module.exports = {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #7C3AED, #A855F7)',
+        'gradient-primary': 'linear-gradient(135deg, #E8772E, #F5A623)',
         'gradient-accent':  'linear-gradient(135deg, #F59E0B, #FB923C)',
       },
     }
