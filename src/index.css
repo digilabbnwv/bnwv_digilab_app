@@ -5,6 +5,26 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-bg-app: 248 250 252;
+    --color-bg-surface: 255 255 255;
+    --color-bg-hover: 241 245 249;
+    --color-text-primary: 15 23 42;
+    --color-text-secondary: 71 85 105;
+    --color-text-muted: 148 163 184;
+    --color-overlay: 0 0 0;
+  }
+
+  .dark {
+    --color-bg-app: 11 18 32;
+    --color-bg-surface: 22 34 53;
+    --color-bg-hover: 30 45 69;
+    --color-text-primary: 234 240 255;
+    --color-text-secondary: 154 168 199;
+    --color-text-muted: 100 116 139;
+    --color-overlay: 255 255 255;
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
@@ -28,7 +48,7 @@
   }
 
   .card {
-    @apply bg-bg-surface rounded-xl border border-white/10 shadow-lg;
+    @apply bg-bg-surface rounded-xl border border-overlay/10 shadow-lg;
   }
 
   .btn-primary {
@@ -40,7 +60,7 @@
   }
 
   .btn-ghost {
-    @apply border border-white/20 text-text-secondary rounded-full px-6 py-3 font-semibold transition-all duration-200 hover:border-white/40 hover:text-text-primary active:scale-[0.98];
+    @apply border border-overlay/20 text-text-secondary rounded-full px-6 py-3 font-semibold transition-all duration-200 hover:border-overlay/40 hover:text-text-primary active:scale-[0.98];
   }
 
   .btn-danger {
@@ -48,7 +68,7 @@
   }
 
   .input {
-    @apply bg-bg-surface border border-white/20 rounded-xl text-text-primary w-full px-4 py-3 text-base placeholder:text-text-muted focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+    @apply bg-bg-surface border border-overlay/20 rounded-xl text-text-primary w-full px-4 py-3 text-base placeholder:text-text-muted focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200;
   }
 
   .badge-beschikbaar {
@@ -64,7 +84,7 @@
   }
 
   .pin-input {
-    @apply w-14 h-14 text-center text-2xl font-bold border-2 border-white/20 rounded-xl bg-bg-surface text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-200 caret-transparent;
+    @apply w-14 h-14 text-center text-2xl font-bold border-2 border-overlay/20 rounded-xl bg-bg-surface text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-200 caret-transparent;
     -webkit-text-security: disc;
   }
 }
@@ -132,7 +152,7 @@
 .bg-decoration::before {
   width: 400px;
   height: 400px;
-  background: rgba(232, 119, 46, 0.1);
+  background: rgba(232, 119, 46, 0.05);
   top: -100px;
   left: -100px;
 }
@@ -140,7 +160,15 @@
 .bg-decoration::after {
   width: 350px;
   height: 350px;
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(245, 158, 11, 0.04);
   bottom: -80px;
   right: -80px;
+}
+
+.dark .bg-decoration::before {
+  background: rgba(232, 119, 46, 0.1);
+}
+
+.dark .bg-decoration::after {
+  background: rgba(245, 158, 11, 0.08);
 }

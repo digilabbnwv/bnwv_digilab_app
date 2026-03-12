@@ -144,7 +144,7 @@ export default function OnderhoudMelden() {
                                 onClick={() => setGekozenType(key)}
                                 className={`w-full text-left p-3 rounded-xl border transition-all ${gekozenType === key
                                     ? 'border-accent bg-accent/10'
-                                    : 'border-white/10 bg-bg-app hover:border-white/20'
+                                    : 'border-overlay/10 bg-bg-app hover:border-overlay/20'
                                     }`}
                             >
                                 <p className="font-medium text-text-primary text-sm">{label}</p>
@@ -180,7 +180,7 @@ export default function OnderhoudMelden() {
                             </button>
                         </div>
                     ) : (
-                        <label className="w-full h-32 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/40 transition-colors">
+                        <label className="w-full h-32 border-2 border-dashed border-overlay/20 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-overlay/40 transition-colors">
                             <Camera size={24} className="text-text-muted" />
                             <span className="text-text-muted text-sm">Foto toevoegen</span>
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto} />

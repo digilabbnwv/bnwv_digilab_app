@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
@@ -8,7 +8,6 @@ const LOCATIES = ['Ermelo', 'Nunspeet']
 
 export default function MateriaalOverzicht() {
     const [items, setItems] = useState([])
-    const [gefilterd, setGefilterd] = useState([])
     const [zoekterm, setZoekterm] = useState('')
     const [statusFilter, setStatusFilter] = useState('alle')
     const [locatieFilter, setLocatieFilter] = useState('alle')
@@ -16,12 +15,12 @@ export default function MateriaalOverzicht() {
 
     useEffect(() => {
         getAllMateriaal()
-            .then(data => { setItems(data); setGefilterd(data) })
+            .then(setItems)
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [])
 
-    useEffect(() => {
+    const gefilterd = useMemo(() => {
         let res = items
         if (zoekterm) {
             const q = zoekterm.toLowerCase()
@@ -40,7 +39,7 @@ export default function MateriaalOverzicht() {
                 i.huidige_locatie === locatieFilter || i.standaard_locatie === locatieFilter
             )
         }
-        setGefilterd(res)
+        return res
     }, [zoekterm, statusFilter, locatieFilter, items])
 
     const statusKnoppen = [
@@ -79,7 +78,7 @@ export default function MateriaalOverzicht() {
                         onClick={() => setStatusFilter(key)}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${statusFilter === key
                             ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                            : 'bg-bg-surface border border-white/10 text-text-muted hover:text-text-secondary'
+                            : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
                             }`}
                     >
                         {label}
@@ -93,7 +92,7 @@ export default function MateriaalOverzicht() {
                     onClick={() => setLocatieFilter('alle')}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${locatieFilter === 'alle'
                         ? 'bg-accent text-white shadow-lg shadow-accent/30'
-                        : 'bg-bg-surface border border-white/10 text-text-muted hover:text-text-secondary'
+                        : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
                         }`}
                 >
                     <MapPin size={12} className="inline mr-1" />Alle locaties
@@ -104,7 +103,7 @@ export default function MateriaalOverzicht() {
                         onClick={() => setLocatieFilter(loc)}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${locatieFilter === loc
                             ? 'bg-accent text-white shadow-lg shadow-accent/30'
-                            : 'bg-bg-surface border border-white/10 text-text-muted hover:text-text-secondary'
+                            : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
                             }`}
                     >
                         <MapPin size={12} className="inline mr-1" />{loc}

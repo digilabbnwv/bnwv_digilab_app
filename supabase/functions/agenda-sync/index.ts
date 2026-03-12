@@ -5,15 +5,13 @@
  * veilig door naar de Power Automate webhook die de Outlook-agenda bijwerkt.
  *
  * Beveiliging:
- *  - Alleen aanroepen met een geldig Supabase JWT (ingelogde medewerker)
+ *  - Vertrouwt op CORS-restrictie en payload-validatie (custom pincode-auth, geen JWT)
  *  - Webhook URL staat uitsluitend in Supabase secrets, nooit in de frontend
  *  - Power Automate webhook heeft ingebouwde SAS-signature in de URL
  *  - Extra geheime header (x-digilab-secret) voor aanvullende validatie
  *  - Strikte invoervalidatie voordat er iets wordt doorgestuurd
  *  - CORS beperkt tot de productie-origin
  */
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // ── Omgevingsvariabelen (ingesteld via: supabase secrets set ...) ──────────
 const POWER_AUTOMATE_WEBHOOK_URL = Deno.env.get('POWER_AUTOMATE_WEBHOOK_URL')
@@ -38,7 +36,7 @@ interface AgendaPayload {
 }
 
 // ── CORS headers ───────────────────────────────────────────────────────────
-function corsHeaders(origin: string) {
+function corsHeaders() {
   return {
     'Access-Control-Allow-Origin':  TOEGESTANE_ORIGIN === '*' ? '*' : TOEGESTANE_ORIGIN,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -48,22 +46,20 @@ function corsHeaders(origin: string) {
 
 // ── Hoofdfunctie ───────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
-  const origin = req.headers.get('origin') ?? ''
-
   // Preflight OPTIONS verzoek afhandelen
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders(origin) })
+    return new Response(null, { headers: corsHeaders() })
   }
 
   // Alleen POST toegestaan
   if (req.method !== 'POST') {
-    return json({ fout: 'Methode niet toegestaan' }, 405, origin)
+    return json({ fout: 'Methode niet toegestaan' }, 405)
   }
 
   // ── 1. Controleer of de secrets zijn ingesteld ───────────────────────
   if (!POWER_AUTOMATE_WEBHOOK_URL || !DIGILAB_WEBHOOK_SECRET) {
     console.error('[agenda-sync] Omgevingsvariabelen ontbreken')
-    return json({ fout: 'Server configuratiefout' }, 500, origin)
+    return json({ fout: 'Server configuratiefout' }, 500)
   }
 
   // Omdat Digilab inlogt via een custom pincode-systeem i.p.v. Supabase Auth,
@@ -74,12 +70,12 @@ Deno.serve(async (req) => {
   try {
     body = await req.json()
   } catch {
-    return json({ fout: 'Ongeldige JSON' }, 400, origin)
+    return json({ fout: 'Ongeldige JSON' }, 400)
   }
 
   const validatieFout = valideerPayload(body)
   if (validatieFout) {
-    return json({ fout: validatieFout }, 400, origin)
+    return json({ fout: validatieFout }, 400)
   }
 
   // ── 4. Stuur door naar Power Automate met geheime header ─────────────
@@ -95,26 +91,26 @@ Deno.serve(async (req) => {
     })
   } catch (err) {
     console.error('[agenda-sync] Power Automate aanroep mislukt:', err)
-    return json({ fout: 'Agenda service niet bereikbaar' }, 502, origin)
+    return json({ fout: 'Agenda service niet bereikbaar' }, 502)
   }
 
   if (!paResp.ok) {
     console.error('[agenda-sync] Power Automate fout:', paResp.status, await paResp.text())
-    return json({ fout: 'Agenda update mislukt' }, 502, origin)
+    return json({ fout: 'Agenda update mislukt' }, 502)
   }
 
   console.log(`[agenda-sync] OK — actie=${body.actie} id=${body.reservering_id} door=${body.medewerker_naam}`)
-  return json({ ok: true, actie: body.actie }, 200, origin)
+  return json({ ok: true, actie: body.actie }, 200)
 })
 
 // ── Hulpfuncties ───────────────────────────────────────────────────────────
 
-function json(data: unknown, status: number, origin: string): Response {
+function json(data: unknown, status: number): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...corsHeaders(origin),
+      ...corsHeaders(),
     },
   })
 }
@@ -129,7 +125,7 @@ function valideerPayload(body: unknown): string | null {
 
   const verplicht: (keyof AgendaPayload)[] = [
     'reservering_id', 'product_naam', 'product_code',
-    'medewerker_naam', 'medewerker_email', 'van_datum', 'tot_datum',
+    'medewerker_naam', 'van_datum', 'tot_datum',
   ]
   for (const veld of verplicht) {
     if (!p[veld] || typeof p[veld] !== 'string' || !(p[veld] as string).trim())

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vitest run)",
+      "Bash(./node_bin/npx vitest run)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

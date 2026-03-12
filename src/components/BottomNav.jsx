@@ -12,14 +12,16 @@ const navItems = [
 
 export default function BottomNav() {
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-surface/95 backdrop-blur-xl border-t border-white/10 safe-area-inset-bottom">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-surface/95 backdrop-blur-xl border-t border-overlay/10 safe-area-inset-bottom">
             <div className="flex items-center justify-around px-2 py-2 max-w-3xl mx-auto">
-                {navItems.map(({ to, icon: Icon, label, accent }) => (
+                {navItems.map((item) => {
+                    const IconComp = item.icon
+                    return (
                     <NavLink
-                        key={to}
-                        to={to}
+                        key={item.to}
+                        to={item.to}
                         className={({ isActive }) =>
-                            `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${accent
+                            `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${item.accent
                                 ? 'bg-gradient-to-r from-primary to-primary-end text-white shadow-lg shadow-primary/30 -mt-4 px-4 py-3 rounded-2xl'
                                 : isActive
                                     ? 'text-primary'
@@ -27,7 +29,7 @@ export default function BottomNav() {
                             }`
                         }
                     >
-                        <Icon size={accent ? 22 : 20} />
+                        <IconComp size={item.accent ? 22 : 20} />
                         <span className={`text-xs font-medium ${accent ? '' : ''}`}>{label}</span>
                     </NavLink>
                 ))}

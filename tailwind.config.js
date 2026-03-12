@@ -7,12 +7,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'bg-app':         '#0B1220',
-        'bg-surface':     '#162235',
-        'bg-hover':       '#1E2D45',
-        'text-primary':   '#EAF0FF',
-        'text-secondary': '#9AA8C7',
-        'text-muted':     '#64748B',
+        'bg-app':         'rgb(var(--color-bg-app) / <alpha-value>)',
+        'bg-surface':     'rgb(var(--color-bg-surface) / <alpha-value>)',
+        'bg-hover':       'rgb(var(--color-bg-hover) / <alpha-value>)',
+        'text-primary':   'rgb(var(--color-text-primary) / <alpha-value>)',
+        'text-secondary': 'rgb(var(--color-text-secondary) / <alpha-value>)',
+        'text-muted':     'rgb(var(--color-text-muted) / <alpha-value>)',
+        'overlay':        'rgb(var(--color-overlay) / <alpha-value>)',
         'primary':        '#E8772E',
         'primary-end':    '#F5A623',
         'accent':         '#F59E0B',

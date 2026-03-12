@@ -222,7 +222,7 @@ export default function ItemPagina() {
                                 <div className="flex items-center gap-2 flex-wrap mt-0.5">
                                     <p className="text-text-muted text-sm">{item.type}</p>
                                     {item.merk && (
-                                        <span className="text-xs bg-white/5 border border-white/10 text-text-muted px-2 py-0.5 rounded-full">{item.merk}</span>
+                                        <span className="text-xs bg-overlay/5 border border-overlay/10 text-text-muted px-2 py-0.5 rounded-full">{item.merk}</span>
                                     )}
                                     {item.aantal != null && (
                                         <span className="text-xs bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">
@@ -247,7 +247,7 @@ export default function ItemPagina() {
                         )}
 
                         {/* Details */}
-                        <div className="space-y-2.5 pt-2 border-t border-white/10">
+                        <div className="space-y-2.5 pt-2 border-t border-overlay/10">
                             {item.status === 'in_gebruik' && item.huidige_medewerker && (
                                 <div className="flex items-center gap-3">
                                     <User size={15} className="text-text-muted flex-shrink-0" />
@@ -270,7 +270,7 @@ export default function ItemPagina() {
 
                         {/* Omschrijving */}
                         {item.omschrijving && (
-                            <div className="pt-3 border-t border-white/10">
+                            <div className="pt-3 border-t border-overlay/10">
                                 <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Omschrijving</p>
                                 <p className="text-text-secondary text-sm leading-relaxed">{item.omschrijving}</p>
                             </div>
@@ -278,7 +278,7 @@ export default function ItemPagina() {
 
                         {/* Inhoud */}
                         {item.inhoud && (
-                            <div className="pt-3 border-t border-white/10">
+                            <div className="pt-3 border-t border-overlay/10">
                                 <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Inhoud / onderdelen</p>
                                 <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-line">{item.inhoud}</p>
                             </div>

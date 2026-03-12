@@ -244,7 +244,7 @@ export default function NieuwMateriaal() {
                     </div>
 
                     {codePreview && (
-                        <div className="bg-bg-app rounded-xl p-4 border border-white/10">
+                        <div className="bg-bg-app rounded-xl p-4 border border-overlay/10">
                             <p className="text-text-muted text-xs mb-1">Productcode wordt:</p>
                             <code className="text-lg font-bold font-mono text-primary tracking-widest">{codePreview}</code>
                             <p className="text-text-muted text-xs mt-2">

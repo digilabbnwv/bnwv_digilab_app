@@ -190,7 +190,7 @@ export default function MateriaalBewerken() {
                         <code className="text-base font-mono font-bold text-text-primary tracking-widest flex-1">
                             {bestaandeCode || '—'}
                         </code>
-                        <span className="text-xs text-text-muted bg-white/5 rounded px-2 py-0.5">Niet aanpasbaar</span>
+                        <span className="text-xs text-text-muted bg-overlay/5 rounded px-2 py-0.5">Niet aanpasbaar</span>
                     </div>
                     <p className="text-text-muted text-xs mt-2">
                         De productcode wordt bij aanmaken vastgesteld en verandert niet meer.

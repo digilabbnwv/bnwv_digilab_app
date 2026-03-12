@@ -17,18 +17,18 @@ export default function Modal({ title, children, onClose, size = 'md' }) {
             />
 
             {/* Modal */}
-            <div className={`relative w-full ${sizes[size]} bg-bg-surface rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl animate-slideUp sm:animate-fadeIn`}>
+            <div className={`relative w-full ${sizes[size]} bg-bg-surface rounded-t-2xl sm:rounded-2xl border border-overlay/10 shadow-2xl animate-slideUp sm:animate-fadeIn`}>
                 {/* Handle (mobile) */}
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                    <div className="w-10 h-1 bg-white/20 rounded-full" />
+                    <div className="w-10 h-1 bg-overlay/20 rounded-full" />
                 </div>
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-overlay/10">
                     <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/10 transition-colors"
+                        className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-overlay/10 transition-colors"
                     >
                         <X size={20} />
                     </button>

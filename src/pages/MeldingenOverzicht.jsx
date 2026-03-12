@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getAllMeldingen, sluitMelding } from '../lib/onderhoud'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator, DatumTijd } from '../components/UI'
@@ -20,7 +20,6 @@ const TYPE_LABELS = {
 
 export default function MeldingenOverzicht() {
     const { medewerker } = useAuth()
-    const navigate = useNavigate()
     const [meldingen, setMeldingen] = useState([])
     const [gefilterd, setGefilterd] = useState([])
     const [statusFilter, setStatusFilter] = useState('open')
@@ -103,7 +102,7 @@ export default function MeldingenOverzicht() {
                                     : key === 'opgelost'
                                         ? 'bg-success text-white shadow-lg shadow-success/30'
                                         : 'bg-primary text-white shadow-lg shadow-primary/30'
-                                : 'bg-bg-surface border border-white/10 text-text-muted hover:text-text-secondary'
+                                : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
                             }`}
                     >
                         {icon}{label}
@@ -143,7 +142,7 @@ export default function MeldingenOverzicht() {
                                         {/* Item naam + type badge */}
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <p className="font-semibold text-text-primary truncate">{m.materiaal?.naam || 'Onbekend item'}</p>
-                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 ${typeInfo.kleur}`}>
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-overlay/5 ${typeInfo.kleur}`}>
                                                 {typeInfo.label}
                                             </span>
                                         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-    getAlleReserveringen, getMijnReserveringen,
+    getAlleReserveringen,
     maakReservering, annuleerReservering, exporteerICS,
 } from '../lib/reserveringen'
 import { getAllMateriaal } from '../lib/materiaal'
@@ -217,7 +217,7 @@ export default function ReserverenPagina() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-bg-surface rounded-xl p-1 mb-5 border border-white/10">
+            <div className="flex gap-1 bg-bg-surface rounded-xl p-1 mb-5 border border-overlay/10">
                 {[
                     { key: 'kalender', label: '📅 Kalender' },
                     { key: 'mijn', label: `👤 Mijn (${mijnRes.length})` },
@@ -370,7 +370,7 @@ export default function ReserverenPagina() {
             )}
 
             {/* ICS tip */}
-            <div className="mt-5 flex items-start gap-2 bg-bg-surface rounded-xl p-3 border border-white/10">
+            <div className="mt-5 flex items-start gap-2 bg-bg-surface rounded-xl p-3 border border-overlay/10">
                 <Info size={16} className="text-text-muted flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-text-muted leading-relaxed">
                     Via <Download size={11} className="inline" /> kun je reserveringen exporteren als .ics bestand voor import in elke agenda.
