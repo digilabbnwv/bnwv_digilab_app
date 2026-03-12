@@ -1,11 +1,11 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Package, QrCode, CalendarDays, User } from 'lucide-react'
+import { LayoutDashboard, Package, Wrench, CalendarDays, User } from 'lucide-react'
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/materiaal', icon: Package, label: 'Materiaal' },
-    { to: '/item/scan', icon: QrCode, label: 'Scan', accent: true },
+    { to: '/melding', icon: Wrench, label: 'Meldingen' },
     { to: '/reserveren', icon: CalendarDays, label: 'Reserveer' },
     { to: '/profiel', icon: User, label: 'Profiel' },
 ]
@@ -21,15 +21,13 @@ export default function BottomNav() {
                         key={item.to}
                         to={item.to}
                         className={({ isActive }) =>
-                            `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${item.accent
-                                ? 'bg-gradient-to-r from-primary to-primary-end text-white shadow-lg shadow-primary/30 -mt-4 px-4 py-3 rounded-2xl'
-                                : isActive
-                                    ? 'text-primary'
-                                    : 'text-text-muted hover:text-text-secondary'
+                            `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${isActive
+                                ? 'text-primary'
+                                : 'text-text-muted hover:text-text-secondary'
                             }`
                         }
                     >
-                        <IconComp size={item.accent ? 22 : 20} />
+                        <IconComp size={20} />
                         <span className={`text-xs font-medium ${item.accent ? '' : ''}`}>{item.label}</span>
                     </NavLink>
                     )

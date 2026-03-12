@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import {
-    mockRegistreer, mockInloggen, mockVerifyPin, mockUpdatePincode
+    mockRegistreer, mockInloggen, mockVerifyPin, mockUpdatePincode, mockUpdateNaam
 } from './mockDB'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -62,6 +62,16 @@ export async function updatePincode(id, nieuwePincode) {
     const { error } = await supabase
         .from('medewerkers')
         .update({ pincode_hash })
+        .eq('id', id)
+    if (error) throw error
+}
+
+export async function updateNaam(id, naam) {
+    if (MOCK) return mockUpdateNaam(id, naam)
+
+    const { error } = await supabase
+        .from('medewerkers')
+        .update({ naam })
         .eq('id', id)
     if (error) throw error
 }

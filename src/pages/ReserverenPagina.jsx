@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
     getAlleReserveringen,
-    maakReservering, annuleerReservering, exporteerICS,
+    maakReservering, annuleerReservering,
 } from '../lib/reserveringen'
 import { getAllMateriaal } from '../lib/materiaal'
 import { LaadIndicator } from '../components/UI'
 import Modal from '../components/Modal'
 import {
     ChevronLeft, ChevronRight, Plus, Calendar,
-    Package, User, Trash2, Download, Info,
+    Package, User, Trash2, Info,
 } from 'lucide-react'
 
 // ── Datum hulpfuncties ───────────────────────────────────────────
@@ -67,6 +67,7 @@ function kleurVoorItem(itemId, items) {
 
 export default function ReserverenPagina() {
     const { medewerker } = useAuth()
+    const [searchParams, setSearchParams] = useSearchParams()
     const [reserveringen, setReserveringen] = useState([])
     const [alleItems, setAlleItems] = useState([])
     const [loading, setLoading] = useState(true)
@@ -102,6 +103,15 @@ export default function ReserverenPagina() {
     }, [])
 
     useEffect(() => { laad() }, [laad])
+
+    // Open nieuw-reservering modal via URL param
+    useEffect(() => {
+        if (searchParams.get('nieuw') === 'true') {
+            setToonNieuw(true)
+            searchParams.delete('nieuw')
+            setSearchParams(searchParams, { replace: true })
+        }
+    }, [searchParams, setSearchParams])
 
     // Bouw kalender: dagcellen met bijhorende reserveringen
     const aantalDagen = dagenInMaand(jaar, maand)
@@ -179,15 +189,6 @@ export default function ReserverenPagina() {
     }
 
     // ICS download
-    const handleICSDownload = () => {
-        const tekst = exporteerICS(reserveringen)
-        const blob = new Blob([tekst], { type: 'text/calendar;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url; a.download = 'digilab-reserveringen.ics'; a.click()
-        URL.revokeObjectURL(url)
-    }
-
     const vandaag = vandaagStr()
 
     return (
@@ -200,13 +201,6 @@ export default function ReserverenPagina() {
                     <p className="text-text-muted text-sm mt-0.5">{reserveringen.length} actieve reservering{reserveringen.length !== 1 ? 'en' : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleICSDownload}
-                        className="btn-ghost p-2.5"
-                        title="Download als .ics (agenda-import)"
-                    >
-                        <Download size={18} />
-                    </button>
                     <button
                         onClick={() => setToonNieuw(true)}
                         className="btn-primary py-2 px-4 text-sm flex items-center gap-2"
@@ -369,12 +363,11 @@ export default function ReserverenPagina() {
                 </div>
             )}
 
-            {/* ICS tip */}
+            {/* Agenda-sync info */}
             <div className="mt-5 flex items-start gap-2 bg-bg-surface rounded-xl p-3 border border-overlay/10">
                 <Info size={16} className="text-text-muted flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-text-muted leading-relaxed">
-                    Via <Download size={11} className="inline" /> kun je reserveringen exporteren als .ics bestand voor import in elke agenda.
-                    Toekomstig: automatische sync met de agenda van <span className="text-text-secondary">ictleskisten@bibliotheeknwveluwe.nl</span>.
+                    Reserveringen worden automatisch gesynchroniseerd met de gedeelde agenda van <span className="text-text-secondary">ictleskisten@bibliotheeknwveluwe.nl</span>.
                 </p>
             </div>
 

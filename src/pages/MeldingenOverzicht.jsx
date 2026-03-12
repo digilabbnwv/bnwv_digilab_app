@@ -22,8 +22,8 @@ export default function MeldingenOverzicht() {
     const { medewerker } = useAuth()
     const [meldingen, setMeldingen] = useState([])
     const [gefilterd, setGefilterd] = useState([])
-    const [statusFilter, setStatusFilter] = useState('open')
     const [loading, setLoading] = useState(true)
+    const [toonAfgerond, setToonAfgerond] = useState(false)
 
     // Sluiten-flow
     const [sluitenMelding, setSluitenMelding] = useState(null)
@@ -45,9 +45,12 @@ export default function MeldingenOverzicht() {
     useEffect(() => { laad() }, [])
 
     useEffect(() => {
-        if (statusFilter === 'alle') setGefilterd(meldingen)
-        else setGefilterd(meldingen.filter(m => m.status === statusFilter))
-    }, [statusFilter, meldingen])
+        if (toonAfgerond) {
+            setGefilterd(meldingen)
+        } else {
+            setGefilterd(meldingen.filter(m => m.status === 'open'))
+        }
+    }, [toonAfgerond, meldingen])
 
     const aantalOpen = meldingen.filter(m => m.status === 'open').length
     const aantalOpgelost = meldingen.filter(m => m.status === 'opgelost').length
@@ -67,12 +70,6 @@ export default function MeldingenOverzicht() {
         }
     }
 
-    const filters = [
-        { key: 'open', label: `Open (${aantalOpen})`, icon: <AlertTriangle size={13} /> },
-        { key: 'opgelost', label: `Opgelost (${aantalOpgelost})`, icon: <CheckCircle2 size={13} /> },
-        { key: 'alle', label: `Alle (${meldingen.length})`, icon: null },
-    ]
-
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
 
@@ -80,7 +77,9 @@ export default function MeldingenOverzicht() {
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary">Meldingen</h1>
-                    <p className="text-text-muted text-sm mt-0.5">Onderhoud & incidenten</p>
+                    <p className="text-text-muted text-sm mt-0.5">
+                        {toonAfgerond ? `${aantalOpen} open · ${aantalOpgelost} afgerond` : `${aantalOpen} openstaand`}
+                    </p>
                 </div>
                 <Link
                     to="/melding/nieuw"
@@ -90,24 +89,18 @@ export default function MeldingenOverzicht() {
                 </Link>
             </div>
 
-            {/* Status filters */}
-            <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
-                {filters.map(({ key, label, icon }) => (
-                    <button
-                        key={key}
-                        onClick={() => setStatusFilter(key)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5 ${statusFilter === key
-                                ? key === 'open'
-                                    ? 'bg-error text-white shadow-lg shadow-error/30'
-                                    : key === 'opgelost'
-                                        ? 'bg-success text-white shadow-lg shadow-success/30'
-                                        : 'bg-primary text-white shadow-lg shadow-primary/30'
-                                : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
-                            }`}
-                    >
-                        {icon}{label}
-                    </button>
-                ))}
+            {/* Toggle afgeronde meldingen */}
+            <div className="flex items-center gap-2 mb-5">
+                <button
+                    onClick={() => setToonAfgerond(!toonAfgerond)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${toonAfgerond
+                            ? 'bg-success text-white shadow-lg shadow-success/30'
+                            : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
+                        }`}
+                >
+                    <CheckCircle2 size={13} />
+                    {toonAfgerond ? 'Afgeronde verbergen' : `Toon afgeronde (${aantalOpgelost})`}
+                </button>
             </div>
 
             {/* Lijst */}
@@ -117,7 +110,7 @@ export default function MeldingenOverzicht() {
                 <div className="card p-10 text-center">
                     <Wrench size={32} className="mx-auto mb-3 text-text-muted opacity-30" />
                     <p className="text-text-muted text-sm">
-                        {statusFilter === 'open' ? 'Geen openstaande meldingen 🎉' : 'Geen meldingen gevonden'}
+                        {!toonAfgerond ? 'Geen openstaande meldingen 🎉' : 'Geen meldingen gevonden'}
                     </p>
                 </div>
             ) : (

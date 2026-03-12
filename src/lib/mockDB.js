@@ -312,6 +312,14 @@ export async function mockUpdatePincode(medewerker_id, nieuwePincode) {
     saveDB(db)
 }
 
+export async function mockUpdateNaam(medewerker_id, naam) {
+    const db = getDB()
+    const idx = db.medewerkers.findIndex(m => m.id === medewerker_id)
+    if (idx === -1) throw new Error('Medewerker niet gevonden')
+    db.medewerkers[idx].naam = naam
+    saveDB(db)
+}
+
 // ── Materiaal mock functies ─────────────────────────────────────
 
 function enrichMateriaal(item, db) {
@@ -606,7 +614,7 @@ export function mockMaakReservering({ materiaalId, medewerkerId, vanDatum, totDa
     return enrichReservering(nieuw, db)
 }
 
-export function mockAnnuleerReservering(reserveringId, medewerkerId) {
+export function mockAnnuleerReservering(reserveringId) {
     const db = getDB()
     if (!db.reserveringen) return
     const idx = db.reserveringen.findIndex(r => r.id === reserveringId)

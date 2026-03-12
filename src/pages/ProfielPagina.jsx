@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { verifyPin, updatePincode } from '../lib/auth'
+import { verifyPin, updatePincode, updateNaam } from '../lib/auth'
 import { getMijnTransacties } from '../lib/materiaal'
 import { DatumTijd, LaadIndicator } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
 import { useTheme } from '../context/ThemeContext'
-import { LogOut, User, Key, Clock, ChevronRight, Package, ArrowUpCircle, ArrowDownCircle, Sun, Monitor, Moon } from 'lucide-react'
+import { LogOut, User, Key, Clock, ChevronRight, Package, ArrowUpCircle, ArrowDownCircle, Sun, Monitor, Moon, Pencil, Check, X } from 'lucide-react'
 
 export default function ProfielPagina() {
-    const { medewerker, logout } = useAuth()
+    const { medewerker, logout, updateMedewerker } = useAuth()
     const { thema, setThema } = useTheme()
     const navigate = useNavigate()
 
@@ -23,12 +23,35 @@ export default function ProfielPagina() {
     const [pinLoading, setPinLoading] = useState(false)
     const [pinSucces, setPinSucces] = useState(false)
 
+    // Naam bewerken
+    const [naamBewerken, setNaamBewerken] = useState(false)
+    const [nieuweNaam, setNieuweNaam] = useState('')
+    const [naamLoading, setNaamLoading] = useState(false)
+
     useEffect(() => {
         getMijnTransacties(medewerker.id)
             .then(setHistorie)
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [medewerker.id])
+
+    const handleNaamOpslaan = async () => {
+        const trimmed = nieuweNaam.trim()
+        if (!trimmed || trimmed === medewerker.naam) {
+            setNaamBewerken(false)
+            return
+        }
+        setNaamLoading(true)
+        try {
+            await updateNaam(medewerker.id, trimmed)
+            updateMedewerker({ naam: trimmed })
+            setNaamBewerken(false)
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setNaamLoading(false)
+        }
+    }
 
     const handleUitloggen = () => {
         logout()
@@ -90,8 +113,34 @@ export default function ProfielPagina() {
                             {medewerker.naam?.charAt(0).toUpperCase()}
                         </span>
                     </div>
-                    <div>
-                        <h2 className="text-lg font-bold text-text-primary">{medewerker.naam}</h2>
+                    <div className="flex-1 min-w-0">
+                        {naamBewerken ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={nieuweNaam}
+                                    onChange={e => setNieuweNaam(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleNaamOpslaan()}
+                                    className="input py-1 px-2 text-lg font-bold flex-1"
+                                    autoFocus
+                                    disabled={naamLoading}
+                                />
+                                <button onClick={handleNaamOpslaan} disabled={naamLoading} className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors">
+                                    <Check size={18} />
+                                </button>
+                                <button onClick={() => setNaamBewerken(false)} className="p-1.5 rounded-lg text-text-muted hover:bg-bg-hover transition-colors">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => { setNaamBewerken(true); setNieuweNaam(medewerker.naam) }}
+                                className="flex items-center gap-2 group text-left"
+                            >
+                                <h2 className="text-lg font-bold text-text-primary">{medewerker.naam}</h2>
+                                <Pencil size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                        )}
                         <p className="text-text-muted text-sm">{medewerker.email}</p>
                     </div>
                 </div>

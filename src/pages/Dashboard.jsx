@@ -1,22 +1,32 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getUitgechecktMateriaal, getMijnMateriaal } from '../lib/materiaal'
+import { getUitgechecktMateriaal, getMijnMateriaal, getAllMateriaal, uitchecken } from '../lib/materiaal'
 import { getOpenMeldingen } from '../lib/onderhoud'
+import { verifyPin } from '../lib/auth'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
-import { QrCode, Wrench, Package, AlertTriangle, ChevronRight, User } from 'lucide-react'
+import Modal from '../components/Modal'
+import PincodeInvoer from '../components/PincodeInvoer'
+import { CalendarDays, PackagePlus, Wrench, Package, AlertTriangle, ChevronRight, User } from 'lucide-react'
 
 export default function Dashboard() {
     const { medewerker } = useAuth()
-    const navigate = useNavigate()
     const [uitgecheckt, setUitgecheckt] = useState([])
     const [mijnMateriaal, setMijnMateriaal] = useState([])
     const [meldingen, setMeldingen] = useState([])
     const [loading, setLoading] = useState(true)
 
+    // "Nu meenemen" modal state
+    const [toonMeenemen, setToonMeenemen] = useState(false)
+    const [beschikbaar, setBeschikbaar] = useState([])
+    const [gekozenId, setGekozenId] = useState('')
+    const [meeneemStap, setMeeneemStap] = useState(1) // 1=kies, 2=pin
+    const [meeneemLoading, setMeeneemLoading] = useState(false)
+    const [meeneemFout, setMeeneemFout] = useState('')
+
     useEffect(() => {
         laden()
-    }, [])
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const laden = async () => {
         setLoading(true)
@@ -33,6 +43,34 @@ export default function Dashboard() {
             console.error(err)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const openMeenemen = async () => {
+        setToonMeenemen(true)
+        setGekozenId('')
+        setMeeneemStap(1)
+        setMeeneemFout('')
+        try {
+            const alle = await getAllMateriaal()
+            setBeschikbaar(alle.filter(i => i.status === 'beschikbaar'))
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    const handleMeeneemPin = async (pin) => {
+        setMeeneemLoading(true)
+        setMeeneemFout('')
+        try {
+            await verifyPin(medewerker.id, pin)
+            await uitchecken(gekozenId, medewerker.id, medewerker.naam)
+            setToonMeenemen(false)
+            await laden()
+        } catch (err) {
+            setMeeneemFout(err.message || 'Uitchecken mislukt')
+        } finally {
+            setMeeneemLoading(false)
         }
     }
 
@@ -55,25 +93,35 @@ export default function Dashboard() {
             </div>
 
             {/* Snelknoppen */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
                 <Link
-                    to="/item/scan"
+                    to="/reserveren?nieuw=true"
                     className="card p-4 flex flex-col items-center gap-3 hover:bg-bg-hover transition-colors cursor-pointer border border-primary/30"
                 >
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-end flex items-center justify-center shadow-lg shadow-primary/30">
-                        <QrCode size={22} className="text-white" />
+                        <CalendarDays size={22} className="text-white" />
                     </div>
-                    <span className="text-sm font-semibold text-text-primary">Scan QR</span>
+                    <span className="text-sm font-semibold text-text-primary">Reserveren</span>
                 </Link>
 
-                <Link
-                    to="/melding"
-                    className="card p-4 flex flex-col items-center gap-3 hover:bg-bg-hover transition-colors cursor-pointer"
+                <button
+                    onClick={openMeenemen}
+                    className="card p-4 flex flex-col items-center gap-3 hover:bg-bg-hover transition-colors cursor-pointer border border-accent/30"
                 >
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-accent-end flex items-center justify-center shadow-lg shadow-accent/30">
+                        <PackagePlus size={22} className="text-white" />
+                    </div>
+                    <span className="text-sm font-semibold text-text-primary">Nu meenemen</span>
+                </button>
+
+                <Link
+                    to="/melding/nieuw"
+                    className="card p-4 flex flex-col items-center gap-3 hover:bg-bg-hover transition-colors cursor-pointer"
+                >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-error to-red-400 flex items-center justify-center shadow-lg shadow-error/30">
                         <Wrench size={22} className="text-white" />
                     </div>
-                    <span className="text-sm font-semibold text-text-primary">Melding maken</span>
+                    <span className="text-sm font-semibold text-text-primary">Melding</span>
                 </Link>
             </div>
 
@@ -186,10 +234,58 @@ export default function Dashboard() {
                         <div className="card p-8 text-center space-y-3">
                             <div className="text-4xl">✨</div>
                             <p className="text-text-primary font-semibold">Alles is op orde!</p>
-                            <p className="text-text-muted text-sm">Scan een QR-code om te beginnen</p>
+                            <p className="text-text-muted text-sm">Gebruik de knoppen hierboven om te beginnen</p>
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Modal: Nu meenemen */}
+            {toonMeenemen && (
+                <Modal title={meeneemStap === 1 ? 'Nu meenemen' : 'Bevestig met pincode'} onClose={() => setToonMeenemen(false)}>
+                    {meeneemStap === 1 ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-text-secondary text-sm font-medium mb-2">Kies materiaal *</label>
+                                <select
+                                    className="input"
+                                    value={gekozenId}
+                                    onChange={e => setGekozenId(e.target.value)}
+                                >
+                                    <option value="">Selecteer beschikbaar materiaal...</option>
+                                    {beschikbaar.map(i => (
+                                        <option key={i.id} value={i.id}>{i.naam} — {i.type}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            {beschikbaar.length === 0 && (
+                                <p className="text-text-muted text-sm text-center">Geen beschikbaar materiaal gevonden</p>
+                            )}
+                            <button
+                                onClick={() => setMeeneemStap(2)}
+                                disabled={!gekozenId}
+                                className="btn-primary w-full py-2.5 disabled:opacity-40"
+                            >
+                                Meenemen
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="mb-4">
+                                <p className="text-text-secondary text-sm">
+                                    Je neemt <strong className="text-text-primary">{beschikbaar.find(i => i.id === gekozenId)?.naam}</strong> mee.
+                                </p>
+                                <p className="text-text-muted text-xs mt-1">Bevestig met jouw pincode.</p>
+                            </div>
+                            <PincodeInvoer
+                                onBevestig={handleMeeneemPin}
+                                loading={meeneemLoading}
+                                error={meeneemFout}
+                                label="Jouw pincode"
+                            />
+                        </>
+                    )}
+                </Modal>
             )}
         </div>
     )
