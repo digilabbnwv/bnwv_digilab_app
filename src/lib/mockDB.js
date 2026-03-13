@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -255,8 +255,8 @@ export async function initMockDB() {
             },
             {
                 id: uuid(), materiaal_id: beebot1.id, medewerker_id: med1Id,
-                van_datum: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-                tot_datum: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                van_datum: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                tot_datum: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
                 toelichting: 'BeeBot-workshop kleutergroep',
                 status: 'actief', aangemaakt_op: new Date().toISOString(),
             },
@@ -358,7 +358,7 @@ export function mockGetAllMateriaal() {
     }).sort((a, b) => a.naam.localeCompare(b.naam))
 }
 
-export function mockUitchecken(materiaalId, medewerkerId, medewerkernaam) {
+export function mockUitchecken(materiaalId, medewerkerId, medewerkernaam, reserveringId = null) {
     const db = getDB()
     const idx = db.materiaal.findIndex(m => m.id === materiaalId)
     if (idx === -1) throw new Error('Item niet gevonden')
@@ -371,8 +371,16 @@ export function mockUitchecken(materiaalId, medewerkerId, medewerkernaam) {
     }
     db.transacties.push({
         id: uuid(), materiaal_id: materiaalId, medewerker_id: medewerkerId,
-        type: 'uitchecken', locatie: null, tijdstip: new Date().toISOString(), notitie: null,
+        type: 'uitchecken', locatie: null, tijdstip: new Date().toISOString(),
+        notitie: null, reservering_id: reserveringId,
     })
+    // Markeer reservering als opgehaald
+    if (reserveringId && db.reserveringen) {
+        const resIdx = db.reserveringen.findIndex(r => r.id === reserveringId)
+        if (resIdx !== -1) {
+            db.reserveringen[resIdx] = { ...db.reserveringen[resIdx], status: 'opgehaald' }
+        }
+    }
     saveDB(db)
 }
 
@@ -620,6 +628,15 @@ export function mockAnnuleerReservering(reserveringId) {
     const idx = db.reserveringen.findIndex(r => r.id === reserveringId)
     if (idx === -1) throw new Error('Reservering niet gevonden')
     db.reserveringen[idx] = { ...db.reserveringen[idx], status: 'geannuleerd' }
+    saveDB(db)
+}
+
+export function mockMarkeerOpgehaald(reserveringId) {
+    const db = getDB()
+    if (!db.reserveringen) return
+    const idx = db.reserveringen.findIndex(r => r.id === reserveringId)
+    if (idx === -1) throw new Error('Reservering niet gevonden')
+    db.reserveringen[idx] = { ...db.reserveringen[idx], status: 'opgehaald' }
     saveDB(db)
 }
 

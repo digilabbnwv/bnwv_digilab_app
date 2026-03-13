@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getUitgechecktMateriaal, getMijnMateriaal, getAllMateriaal, uitchecken } from '../lib/materiaal'
 import { getOpenMeldingen } from '../lib/onderhoud'
+import { checkReserveringsContext, computeReserveringsContext, getReserveringenVoorItem } from '../lib/reserveringen'
 import { verifyPin } from '../lib/auth'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
-import { CalendarDays, PackagePlus, Wrench, Package, AlertTriangle, ChevronRight, User } from 'lucide-react'
+import { CalendarDays, PackagePlus, Wrench, Package, AlertTriangle, ChevronRight, User, CalendarCheck, Clock } from 'lucide-react'
 
 export default function Dashboard() {
     const { medewerker } = useAuth()
@@ -20,9 +21,13 @@ export default function Dashboard() {
     const [toonMeenemen, setToonMeenemen] = useState(false)
     const [beschikbaar, setBeschikbaar] = useState([])
     const [gekozenId, setGekozenId] = useState('')
-    const [meeneemStap, setMeeneemStap] = useState(1) // 1=kies, 2=pin
+    const [meeneemStap, setMeeneemStap] = useState(1) // 1=kies, 2=context, 3=pin
     const [meeneemLoading, setMeeneemLoading] = useState(false)
     const [meeneemFout, setMeeneemFout] = useState('')
+    const [resContext, setResContext] = useState(null)
+    const [resContextLoading, setResContextLoading] = useState(false)
+    const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
+    const [deadlines, setDeadlines] = useState({}) // { materiaalId: 'YYYY-MM-DD' }
 
     useEffect(() => {
         laden()
@@ -39,6 +44,22 @@ export default function Dashboard() {
             setUitgecheckt(u)
             setMijnMateriaal(m)
             setMeldingen(mel)
+
+            // Bereken terugbrengdeadlines voor "Bij mij" items
+            const deadlineMap = {}
+            await Promise.all(m.map(async (item) => {
+                try {
+                    const res = await getReserveringenVoorItem(item.id)
+                    const ctx = computeReserveringsContext(res, medewerker.id)
+                    if (ctx.terugbrengDeadline) {
+                        deadlineMap[item.id] = {
+                            datum: ctx.terugbrengDeadline,
+                            naam: ctx.eerstvolgendeAnders?.medewerker?.naam,
+                        }
+                    }
+                } catch { /* negeer fouten bij deadline berekening */ }
+            }))
+            setDeadlines(deadlineMap)
         } catch (err) {
             console.error(err)
         } finally {
@@ -51,6 +72,8 @@ export default function Dashboard() {
         setGekozenId('')
         setMeeneemStap(1)
         setMeeneemFout('')
+        setResContext(null)
+        setGekoppeldeReservering(null)
         try {
             const alle = await getAllMateriaal()
             setBeschikbaar(alle.filter(i => i.status === 'beschikbaar'))
@@ -59,12 +82,30 @@ export default function Dashboard() {
         }
     }
 
+    const handleNaarContext = async () => {
+        if (!gekozenId) return
+        setResContextLoading(true)
+        try {
+            const ctx = await checkReserveringsContext(gekozenId, medewerker.id)
+            setResContext(ctx)
+            setGekoppeldeReservering(null)
+            setMeeneemStap(2)
+        } catch (err) {
+            console.error(err)
+            // Bij fout direct door naar pin
+            setResContext({ scenario: 'ad_hoc_vrij', eigenReservering: null, eerstvolgendeAnders: null, terugbrengDeadline: null })
+            setMeeneemStap(2)
+        } finally {
+            setResContextLoading(false)
+        }
+    }
+
     const handleMeeneemPin = async (pin) => {
         setMeeneemLoading(true)
         setMeeneemFout('')
         try {
             await verifyPin(medewerker.id, pin)
-            await uitchecken(gekozenId, medewerker.id, medewerker.naam)
+            await uitchecken(gekozenId, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
             setToonMeenemen(false)
             await laden()
         } catch (err) {
@@ -72,6 +113,12 @@ export default function Dashboard() {
         } finally {
             setMeeneemLoading(false)
         }
+    }
+
+    const formatDatum = (d) => {
+        if (!d) return ''
+        const [, m, dag] = d.split('-')
+        return `${dag}-${m}`
     }
 
     const uur = new Date().getHours()
@@ -148,6 +195,11 @@ export default function Dashboard() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-text-primary truncate">{item.naam}</p>
                                             <p className="text-xs text-text-muted">{item.type}</p>
+                                            {deadlines[item.id] && (
+                                                <p className="text-xs text-amber-400 flex items-center gap-1 mt-0.5">
+                                                    <Clock size={11} /> Terugbrengen voor {formatDatum(deadlines[item.id].datum)}
+                                                </p>
+                                            )}
                                         </div>
                                         <StatusBadge status={item.status} />
                                     </Link>
@@ -242,8 +294,11 @@ export default function Dashboard() {
 
             {/* Modal: Nu meenemen */}
             {toonMeenemen && (
-                <Modal title={meeneemStap === 1 ? 'Nu meenemen' : 'Bevestig met pincode'} onClose={() => setToonMeenemen(false)}>
-                    {meeneemStap === 1 ? (
+                <Modal
+                    title={meeneemStap === 1 ? 'Nu meenemen' : meeneemStap === 2 ? 'Meenemen' : 'Bevestig met pincode'}
+                    onClose={() => setToonMeenemen(false)}
+                >
+                    {meeneemStap === 1 && (
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-text-secondary text-sm font-medium mb-2">Kies materiaal *</label>
@@ -262,18 +317,100 @@ export default function Dashboard() {
                                 <p className="text-text-muted text-sm text-center">Geen beschikbaar materiaal gevonden</p>
                             )}
                             <button
-                                onClick={() => setMeeneemStap(2)}
-                                disabled={!gekozenId}
+                                onClick={handleNaarContext}
+                                disabled={!gekozenId || resContextLoading}
                                 className="btn-primary w-full py-2.5 disabled:opacity-40"
                             >
-                                Meenemen
+                                {resContextLoading ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+                                ) : 'Meenemen'}
                             </button>
                         </div>
-                    ) : (
+                    )}
+
+                    {meeneemStap === 2 && resContext && (
+                        <div className="space-y-4">
+                            <p className="text-text-secondary text-sm">
+                                <strong className="text-text-primary">{beschikbaar.find(i => i.id === gekozenId)?.naam}</strong>
+                            </p>
+
+                            {/* Scenario A: Eigen reservering */}
+                            {resContext.scenario === 'eigen_reservering' && (
+                                <div className="rounded-xl p-4 border border-success/30 bg-success/10 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <CalendarCheck size={18} className="text-success" />
+                                        <p className="text-success text-sm font-semibold">Dit item staat voor jou gereserveerd</p>
+                                    </div>
+                                    <p className="text-success/80 text-xs">
+                                        {formatDatum(resContext.eigenReservering.van_datum)} t/m {formatDatum(resContext.eigenReservering.tot_datum)}
+                                        {resContext.eigenReservering.toelichting && ` — ${resContext.eigenReservering.toelichting}`}
+                                    </p>
+                                    <button
+                                        onClick={() => { setGekoppeldeReservering(resContext.eigenReservering); setMeeneemStap(3) }}
+                                        className="btn-primary w-full py-2.5 mt-2"
+                                    >
+                                        Ophalen voor reservering
+                                    </button>
+                                    <button
+                                        onClick={() => { setGekoppeldeReservering(null); setMeeneemStap(3) }}
+                                        className="text-text-muted text-xs underline w-full text-center mt-1"
+                                    >
+                                        Liever ad-hoc meenemen
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Scenario B: Vrij beschikbaar */}
+                            {resContext.scenario === 'ad_hoc_vrij' && (
+                                <div className="rounded-xl p-4 border border-overlay/10 bg-bg-hover space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <PackagePlus size={18} className="text-text-secondary" />
+                                        <p className="text-text-primary text-sm font-semibold">Geen reserveringen — vrij beschikbaar</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setGekoppeldeReservering(null); setMeeneemStap(3) }}
+                                        className="btn-primary w-full py-2.5 mt-2"
+                                    >
+                                        Meenemen
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Scenario C: Conflict met reservering van collega */}
+                            {resContext.scenario === 'ad_hoc_conflict' && (
+                                <div className="rounded-xl p-4 border border-amber-500/40 bg-amber-500/10 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle size={18} className="text-amber-400" />
+                                        <p className="text-amber-400 text-sm font-semibold">
+                                            {resContext.eerstvolgendeAnders?.medewerker?.naam || 'Een collega'} heeft dit item gereserveerd
+                                        </p>
+                                    </div>
+                                    <p className="text-amber-400/80 text-xs">
+                                        Reservering begint op {formatDatum(resContext.eerstvolgendeAnders?.van_datum)}
+                                    </p>
+                                    <div className="bg-amber-500/10 rounded-lg p-3 flex items-center gap-2">
+                                        <Clock size={16} className="text-amber-300 flex-shrink-0" />
+                                        <p className="text-amber-300 text-sm font-semibold">
+                                            Breng terug voor: {formatDatum(resContext.terugbrengDeadline)}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setGekoppeldeReservering(null); setMeeneemStap(3) }}
+                                        className="btn-primary w-full py-2.5 bg-amber-600 hover:bg-amber-700"
+                                    >
+                                        Ik begrijp het, meenemen
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {meeneemStap === 3 && (
                         <>
                             <div className="mb-4">
                                 <p className="text-text-secondary text-sm">
-                                    Je neemt <strong className="text-text-primary">{beschikbaar.find(i => i.id === gekozenId)?.naam}</strong> mee.
+                                    Je neemt <strong className="text-text-primary">{beschikbaar.find(i => i.id === gekozenId)?.naam}</strong> mee
+                                    {gekoppeldeReservering ? ' voor je reservering' : ''}.
                                 </p>
                                 <p className="text-text-muted text-xs mt-1">Bevestig met jouw pincode.</p>
                             </div>

@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS transacties (
   type            TEXT NOT NULL CHECK (type IN ('uitchecken', 'inchecken', 'overrule', 'locatiewijziging')),
   locatie         TEXT,
   tijdstip        TIMESTAMPTZ DEFAULT NOW(),
-  notitie         TEXT
+  notitie         TEXT,
+  reservering_id  UUID REFERENCES reserveringen(id) ON DELETE SET NULL  -- Koppeling met reservering (nullable, alleen bij ophalen voor reservering)
 );
 
 -- 4. Onderhoudsmeldingen tabel
@@ -68,7 +69,7 @@ CREATE TABLE IF NOT EXISTS reserveringen (
   van_datum       DATE NOT NULL,
   tot_datum       DATE NOT NULL CHECK (tot_datum >= van_datum),
   toelichting     TEXT,
-  status          TEXT NOT NULL DEFAULT 'actief' CHECK (status IN ('actief', 'geannuleerd')),
+  status          TEXT NOT NULL DEFAULT 'actief' CHECK (status IN ('actief', 'geannuleerd', 'opgehaald')),
   aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
 );
 

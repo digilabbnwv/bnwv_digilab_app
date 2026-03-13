@@ -45,8 +45,8 @@ export async function getAllMateriaal() {
     return data
 }
 
-export async function uitchecken(materiaalId, medewerkerId, medewerkernaam) {
-    if (MOCK) return mockUitchecken(materiaalId, medewerkerId, medewerkernaam)
+export async function uitchecken(materiaalId, medewerkerId, medewerkernaam, reserveringId = null) {
+    if (MOCK) return mockUitchecken(materiaalId, medewerkerId, medewerkernaam, reserveringId)
 
     const { error: u } = await supabase.from('materiaal').update({
         status: 'in_gebruik', huidige_medewerker_id: medewerkerId,
@@ -54,11 +54,20 @@ export async function uitchecken(materiaalId, medewerkerId, medewerkernaam) {
     }).eq('id', materiaalId)
     if (u) throw u
 
-    const { error: l } = await supabase.from('transacties').insert([{
+    const transactie = {
         materiaal_id: materiaalId, medewerker_id: medewerkerId,
         type: 'uitchecken', tijdstip: new Date().toISOString(),
-    }])
+    }
+    if (reserveringId) transactie.reservering_id = reserveringId
+
+    const { error: l } = await supabase.from('transacties').insert([transactie])
     if (l) throw l
+
+    // Markeer reservering als opgehaald
+    if (reserveringId) {
+        const { markeerOpgehaald } = await import('./reserveringen')
+        await markeerOpgehaald(reserveringId)
+    }
 }
 
 export async function inchecken(materiaalId, medewerkerId, locatie, vorigeLocatie) {

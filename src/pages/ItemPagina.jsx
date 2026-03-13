@@ -4,11 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { getMateriaalaItem } from '../lib/materiaal'
 import { uitchecken, inchecken, overrule } from '../lib/materiaal'
 import { verifyPin } from '../lib/auth'
-import { getReserveringenVoorItem, getEersteActieveReservering } from '../lib/reserveringen'
+import { getReserveringenVoorItem, getEersteActieveReservering, computeReserveringsContext } from '../lib/reserveringen'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
-import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 
@@ -27,6 +27,7 @@ export default function ItemPagina() {
     const [pinLoading, setPinLoading] = useState(false)
     const [succes, setSucces] = useState('')
     const [reserveringen, setReserveringen] = useState([])
+    const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
 
     // Scan modus: als qrCode === 'scan', open camera
     const isScanModus = qrCode === 'scan'
@@ -55,11 +56,18 @@ export default function ItemPagina() {
         }
     }, [qrCode, isScanModus, laadItem])
 
+    const formatDatum = (d) => {
+        if (!d) return ''
+        const [, m, dag] = d.split('-')
+        return `${dag}-${m}`
+    }
+
     const openActie = (type) => {
         setActie(type)
         setStap(1)
         setPinFout('')
         setGekozenLocatie('')
+        setGekoppeldeReservering(null)
     }
 
     const sluitActie = () => {
@@ -80,10 +88,10 @@ export default function ItemPagina() {
             await verifyPin(medewerker.id, pin)
             // Check op overrule
             if (isUitgechecktDoorCollega) {
-                setStap(3) // overrule bevestiging
+                setStap(4) // overrule bevestiging
             } else {
                 // Direct uitchecken
-                await uitchecken(item.id, medewerker.id, medewerker.naam)
+                await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
                 setSucces('Item succesvol meegenomen!')
                 sluitActie()
                 laadItem(qrCode)
@@ -131,7 +139,7 @@ export default function ItemPagina() {
         setPinLoading(true)
         try {
             if (actie === 'meenemen') {
-                await uitchecken(item.id, medewerker.id, medewerker.naam)
+                await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
                 setSucces('Item overgenomen!')
             } else {
                 // Locatie kiezen eerst
@@ -291,8 +299,8 @@ export default function ItemPagina() {
                         if (!eersteRes) return null
                         const isMijn = eersteRes.medewerker?.id === medewerker.id
                         const formatD = (d) => {
-                            const [j, m, dag] = d.split('-')
-                            return `${dag}-${m}-${j}`
+                            const [jaar, m, dag] = d.split('-')
+                            return `${dag}-${m}-${jaar}`
                         }
                         return (
                             <div className={`rounded-xl p-4 mb-4 border flex items-start gap-3 ${isMijn
@@ -357,9 +365,9 @@ export default function ItemPagina() {
                 </>
             )}
 
-            {/* Modal: Meenemen */}
+            {/* Modal: Meenemen — Stap 1: Reserveringscontext */}
             {actie === 'meenemen' && stap === 1 && (
-                <Modal title={heeftOpenMeldingen ? '⚠️ Openstaande melding!' : 'Meenemen'} onClose={sluitActie}>
+                <Modal title="Meenemen" onClose={sluitActie}>
                     {heeftOpenMeldingen && (
                         <div className="bg-error/10 border border-error/30 rounded-xl p-3 mb-4 text-error text-sm">
                             Dit item heeft een openstaande onderhoudsmelding. Weet je zeker dat je het wilt meenemen?
@@ -367,9 +375,86 @@ export default function ItemPagina() {
                     )}
                     {isUitgechecktDoorCollega && (
                         <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 mb-4 text-accent text-sm">
-                            ⚠️ Dit item is uitgecheckt door <strong>{item.huidige_medewerker?.naam}</strong>. Je pincode wordt gevraagd ter bevestiging.
+                            Dit item is uitgecheckt door <strong>{item.huidige_medewerker?.naam}</strong>. Je pincode wordt gevraagd ter bevestiging.
                         </div>
                     )}
+
+                    {(() => {
+                        const ctx = computeReserveringsContext(reserveringen, medewerker.id)
+
+                        if (ctx.scenario === 'eigen_reservering') return (
+                            <div className="rounded-xl p-4 border border-success/30 bg-success/10 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <CalendarCheck size={18} className="text-success" />
+                                    <p className="text-success text-sm font-semibold">Dit item staat voor jou gereserveerd</p>
+                                </div>
+                                <p className="text-success/80 text-xs">
+                                    {formatDatum(ctx.eigenReservering.van_datum)} t/m {formatDatum(ctx.eigenReservering.tot_datum)}
+                                    {ctx.eigenReservering.toelichting && ` — ${ctx.eigenReservering.toelichting}`}
+                                </p>
+                                <button
+                                    onClick={() => { setGekoppeldeReservering(ctx.eigenReservering); setStap(2) }}
+                                    className="btn-primary w-full py-2.5 mt-2"
+                                >
+                                    Ophalen voor reservering
+                                </button>
+                                <button
+                                    onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
+                                    className="text-text-muted text-xs underline w-full text-center mt-1"
+                                >
+                                    Liever ad-hoc meenemen
+                                </button>
+                            </div>
+                        )
+
+                        if (ctx.scenario === 'ad_hoc_conflict') return (
+                            <div className="rounded-xl p-4 border border-amber-500/40 bg-amber-500/10 space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <AlertTriangle size={18} className="text-amber-400" />
+                                    <p className="text-amber-400 text-sm font-semibold">
+                                        {ctx.eerstvolgendeAnders?.medewerker?.naam || 'Een collega'} heeft dit item gereserveerd
+                                    </p>
+                                </div>
+                                <p className="text-amber-400/80 text-xs">
+                                    Reservering begint op {formatDatum(ctx.eerstvolgendeAnders?.van_datum)}
+                                </p>
+                                <div className="bg-amber-500/10 rounded-lg p-3 flex items-center gap-2">
+                                    <Clock size={16} className="text-amber-300 flex-shrink-0" />
+                                    <p className="text-amber-300 text-sm font-semibold">
+                                        Breng terug voor: {formatDatum(ctx.terugbrengDeadline)}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
+                                    className="btn-primary w-full py-2.5 bg-amber-600 hover:bg-amber-700"
+                                >
+                                    Ik begrijp het, meenemen
+                                </button>
+                            </div>
+                        )
+
+                        // Scenario: ad_hoc_vrij
+                        return (
+                            <div className="rounded-xl p-4 border border-overlay/10 bg-bg-hover space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <PackagePlus size={18} className="text-text-secondary" />
+                                    <p className="text-text-primary text-sm font-semibold">Geen reserveringen — vrij beschikbaar</p>
+                                </div>
+                                <button
+                                    onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
+                                    className="btn-primary w-full py-2.5 mt-2"
+                                >
+                                    Meenemen
+                                </button>
+                            </div>
+                        )
+                    })()}
+                </Modal>
+            )}
+
+            {/* Modal: Meenemen — Stap 2: Pincode */}
+            {actie === 'meenemen' && stap === 2 && (
+                <Modal title="Bevestig met pincode" onClose={sluitActie}>
                     <PincodeInvoer
                         onBevestig={handlePinMeenemen}
                         loading={pinLoading}
@@ -380,10 +465,10 @@ export default function ItemPagina() {
             )}
 
             {/* Modal: Overrule bevestiging (meenemen) */}
-            {actie === 'meenemen' && stap === 3 && (
+            {actie === 'meenemen' && stap === 4 && (
                 <Modal title="Overnemen van collega" onClose={sluitActie}>
                     <p className="text-text-secondary text-sm mb-4">
-                        ⚠️ Dit item is uitgecheckt door <strong className="text-text-primary">{item.huidige_medewerker?.naam}</strong>.<br />
+                        Dit item is uitgecheckt door <strong className="text-text-primary">{item.huidige_medewerker?.naam}</strong>.<br />
                         Weet je zeker dat jij het meeneemt?
                     </p>
                     <div className="flex gap-3">

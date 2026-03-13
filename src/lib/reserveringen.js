@@ -3,7 +3,7 @@
  *
  * Data model:
  *   reserveringen (id, materiaal_id, medewerker_id, van_datum, tot_datum,
- *                  toelichting, status: 'actief'|'geannuleerd', aangemaakt_op)
+ *                  toelichting, status: 'actief'|'geannuleerd'|'opgehaald', aangemaakt_op)
  *
  * Toekomstige kalender-integratie:
  *   De van_datum/tot_datum velden zijn ISO 8601 datums (YYYY-MM-DD).
@@ -21,6 +21,7 @@ import { syncAgendaAanmaken, syncAgendaAnnuleren } from './agendaSync'
 import {
     mockGetAlleReserveringen, mockGetReserveringenVoorItem,
     mockGetMijnReserveringen, mockMaakReservering, mockAnnuleerReservering,
+    mockMarkeerOpgehaald,
 } from './mockDB'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -134,6 +135,96 @@ export function getEersteActieveReservering(reserveringen) {
     return reserveringen
         .filter(r => r.tot_datum >= vandaag && r.status === 'actief')
         .sort((a, b) => a.van_datum.localeCompare(b.van_datum))[0] || null
+}
+
+// ── Reserveringscontext voor meenemen-flow ──────────────────────
+
+/**
+ * Bepaalt de reserveringscontext bij het uitchecken van een item.
+ * Puur/synchroon — werkt op een array reserveringen.
+ *
+ * @param {Array} reserveringen - Alle actieve reserveringen voor het item
+ * @param {string} medewerkerId - ID van de huidige medewerker
+ * @returns {{ eigenReservering, eerstvolgendeAnders, terugbrengDeadline, scenario }}
+ */
+export function computeReserveringsContext(reserveringen, medewerkerId) {
+    // Lokale datum als YYYY-MM-DD (zonder UTC-conversie)
+    const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+    const vandaag = localISO(new Date())
+
+    // Bereken datum 7 dagen in de toekomst
+    const d7 = new Date()
+    d7.setDate(d7.getDate() + 7)
+    const over7dagen = localISO(d7)
+
+    // Alleen actieve reserveringen die nog niet verlopen zijn
+    const actief = reserveringen.filter(r => r.status === 'actief' && r.tot_datum >= vandaag)
+
+    // 1. Eigen reservering: loopt vandaag OF begint binnen 7 dagen
+    const eigenReservering = actief.find(r => {
+        const isMijn = (r.medewerker_id || r.medewerker?.id) === medewerkerId
+        if (!isMijn) return false
+        // Loopt vandaag (van_datum <= vandaag <= tot_datum)
+        if (r.van_datum <= vandaag && r.tot_datum >= vandaag) return true
+        // Begint binnen 7 dagen
+        if (r.van_datum > vandaag && r.van_datum <= over7dagen) return true
+        return false
+    }) || null
+
+    // 2. Eerstvolgende reservering van iemand anders
+    const eerstvolgendeAnders = actief
+        .filter(r => {
+            const id = r.medewerker_id || r.medewerker?.id
+            return id !== medewerkerId
+        })
+        .sort((a, b) => a.van_datum.localeCompare(b.van_datum))[0] || null
+
+    // 3. Terugbrengdeadline: dag vóór de eerstvolgende reservering van ander
+    let terugbrengDeadline = null
+    if (eerstvolgendeAnders) {
+        const [j, m, d] = eerstvolgendeAnders.van_datum.split('-').map(Number)
+        const vanDatum = new Date(j, m - 1, d)
+        vanDatum.setDate(vanDatum.getDate() - 1)
+        terugbrengDeadline = localISO(vanDatum)
+        if (terugbrengDeadline < vandaag) {
+            terugbrengDeadline = vandaag
+        }
+    }
+
+    // 4. Scenario bepalen
+    let scenario
+    if (eigenReservering) {
+        scenario = 'eigen_reservering'
+    } else if (eerstvolgendeAnders) {
+        scenario = 'ad_hoc_conflict'
+    } else {
+        scenario = 'ad_hoc_vrij'
+    }
+
+    return { eigenReservering, eerstvolgendeAnders, terugbrengDeadline, scenario }
+}
+
+/**
+ * Async wrapper: haalt reserveringen op en berekent context.
+ * Gebruikt door Dashboard waar reserveringen niet pre-loaded zijn.
+ */
+export async function checkReserveringsContext(materiaalId, medewerkerId) {
+    const reserveringen = await getReserveringenVoorItem(materiaalId)
+    return computeReserveringsContext(reserveringen, medewerkerId)
+}
+
+/**
+ * Update de status van een reservering naar 'opgehaald'.
+ */
+export async function markeerOpgehaald(reserveringId) {
+    if (MOCK) return mockMarkeerOpgehaald(reserveringId)
+
+    const { error } = await supabase
+        .from('reserveringen')
+        .update({ status: 'opgehaald' })
+        .eq('id', reserveringId)
+    if (error) throw error
 }
 
 /**
