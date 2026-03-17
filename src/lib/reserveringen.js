@@ -106,6 +106,7 @@ export async function annuleerReservering(reserveringId, medewerkerId) {
         .from('reserveringen')
         .update({ status: 'geannuleerd' })
         .eq('id', reserveringId)
+        .eq('medewerker_id', medewerkerId)
         .select('*, materiaal(id, naam, type, qr_code), medewerker:medewerkers(id, naam)')
         .single()
     if (error) throw error

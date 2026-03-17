@@ -5,6 +5,10 @@ import {
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
+export function isBeheerder(medewerker) {
+    return medewerker?.rol === 'beheerder'
+}
+
 // Eenvoudige hash functie voor pincode
 export async function hashPin(pin) {
     const encoder = new TextEncoder()
@@ -33,7 +37,7 @@ export async function inloggen({ email, pincode }) {
     const pincode_hash = await hashPin(pincode)
     const { data, error } = await supabase
         .from('medewerkers')
-        .select('*')
+        .select('id, naam, email, rol, aangemaakt_op')
         .eq('email', email.toLowerCase().trim())
         .eq('pincode_hash', pincode_hash)
         .single()

@@ -12,6 +12,8 @@ import MeldingenOverzicht from './pages/MeldingenOverzicht'
 import OnderhoudMelden from './pages/OnderhoudMelden'
 import ReserverenPagina from './pages/ReserverenPagina'
 import ProfielPagina from './pages/ProfielPagina'
+import WorkshopCatalogus from './pages/WorkshopCatalogus'
+import WorkshopTemplateDetail from './pages/WorkshopTemplateDetail'
 import BottomNav from './components/BottomNav'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -33,6 +35,18 @@ function ProtectedRoute({ children }) {
     </div>
   )
   if (!medewerker) return <Navigate to="/login" replace />
+  return children
+}
+
+function BeheerderRoute({ children }) {
+  const { medewerker, loading, isBeheerder } = useAuth()
+  if (loading) return (
+    <div className="min-h-dvh flex items-center justify-center bg-bg-app">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+  if (!medewerker) return <Navigate to="/login" replace />
+  if (!isBeheerder) return <Navigate to="/" replace />
   return children
 }
 
@@ -64,13 +78,18 @@ export default function App() {
 
         {/* Materiaal */}
         <Route path="/materiaal" element={<ProtectedRoute><PageLayout><MateriaalOverzicht /></PageLayout></ProtectedRoute>} />
-        <Route path="/materiaal/nieuw" element={<ProtectedRoute><PageLayout><NieuwMateriaal /></PageLayout></ProtectedRoute>} />
-        <Route path="/materiaal/:id/bewerken" element={<ProtectedRoute><PageLayout><MateriaalBewerken /></PageLayout></ProtectedRoute>} />
+        <Route path="/materiaal/nieuw" element={<BeheerderRoute><PageLayout><NieuwMateriaal /></PageLayout></BeheerderRoute>} />
+        <Route path="/materiaal/:id/bewerken" element={<BeheerderRoute><PageLayout><MateriaalBewerken /></PageLayout></BeheerderRoute>} />
 
         {/* Meldingen — overzicht eerst, dan nieuw formulier */}
         <Route path="/melding" element={<ProtectedRoute><PageLayout><MeldingenOverzicht /></PageLayout></ProtectedRoute>} />
         <Route path="/melding/nieuw" element={<ProtectedRoute><PageLayout><OnderhoudMelden /></PageLayout></ProtectedRoute>} />
         <Route path="/melding/nieuw/:materiaalId" element={<ProtectedRoute><PageLayout><OnderhoudMelden /></PageLayout></ProtectedRoute>} />
+
+        {/* Workshops */}
+        <Route path="/workshops" element={<ProtectedRoute><PageLayout><WorkshopCatalogus /></PageLayout></ProtectedRoute>} />
+        <Route path="/workshops/nieuw" element={<BeheerderRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></BeheerderRoute>} />
+        <Route path="/workshops/:id" element={<ProtectedRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></ProtectedRoute>} />
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />

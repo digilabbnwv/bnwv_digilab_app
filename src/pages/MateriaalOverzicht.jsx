@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
+import { useAuth } from '../context/AuthContext'
 import { Search, Package, Plus, MapPin, User, AlertTriangle, Pencil } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 
 export default function MateriaalOverzicht() {
+    const { isBeheerder } = useAuth()
     const [items, setItems] = useState([])
     const [zoekterm, setZoekterm] = useState('')
     const [statusFilter, setStatusFilter] = useState('alle')
@@ -53,9 +55,11 @@ export default function MateriaalOverzicht() {
         <div className="app-container pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-text-primary">Materiaal</h1>
-                <Link to="/materiaal/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
-                    <Plus size={16} /> Nieuw
-                </Link>
+                {isBeheerder && (
+                    <Link to="/materiaal/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                        <Plus size={16} /> Nieuw
+                    </Link>
+                )}
             </div>
 
             {/* Zoekbalk */}
@@ -148,14 +152,15 @@ export default function MateriaalOverzicht() {
                                     </div>
                                     <StatusBadge status={item.status} />
                                 </Link>
-                                {/* Bewerken knop */}
-                                <Link
-                                    to={`/materiaal/${item.id}/bewerken`}
-                                    className="p-4 pl-2 text-text-muted hover:text-primary transition-colors flex-shrink-0"
-                                    title="Bewerken"
-                                >
-                                    <Pencil size={16} />
-                                </Link>
+                                {isBeheerder && (
+                                    <Link
+                                        to={`/materiaal/${item.id}/bewerken`}
+                                        className="p-4 pl-2 text-text-muted hover:text-primary transition-colors flex-shrink-0"
+                                        title="Bewerken"
+                                    >
+                                        <Pencil size={16} />
+                                    </Link>
+                                )}
                             </div>
                         )
                     })}

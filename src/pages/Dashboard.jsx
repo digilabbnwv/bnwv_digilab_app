@@ -11,7 +11,7 @@ import PincodeInvoer from '../components/PincodeInvoer'
 import { CalendarDays, PackagePlus, Wrench, Package, AlertTriangle, ChevronRight, User, CalendarCheck, Clock } from 'lucide-react'
 
 export default function Dashboard() {
-    const { medewerker } = useAuth()
+    const { medewerker, isBeheerder } = useAuth()
     const [uitgecheckt, setUitgecheckt] = useState([])
     const [mijnMateriaal, setMijnMateriaal] = useState([])
     const [meldingen, setMeldingen] = useState([])
@@ -131,6 +131,7 @@ export default function Dashboard() {
                 <div>
                     <p className="text-text-muted text-sm">{groet},</p>
                     <h1 className="text-2xl font-bold text-text-primary tracking-tight">{medewerker.naam.split(' ')[0]} 👋</h1>
+                    {isBeheerder && <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-full">Beheerder</span>}
                 </div>
                 <img
                     src="/bnwv_digilab_app/logo-bnwv.png"

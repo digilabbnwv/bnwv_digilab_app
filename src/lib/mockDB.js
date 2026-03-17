@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -208,11 +208,48 @@ export async function initMockDB() {
     spheroBolt.huidige_locatie = null
     spheroBolt.laatste_medewerker_naam = null
 
+    // ── Workshop Templates (catalogus) ──────────────────────────
+    const wt = (titel, materiaalOmschrijving, doelgroep, maxDeelnemers = 10, duurMin = 60, kosten = null) => ({
+        id: uuid(),
+        titel,
+        toelichting: null,
+        materiaal_omschrijving: materiaalOmschrijving,
+        materiaal_ids: [],
+        min_deelnemers: 1,
+        max_deelnemers: maxDeelnemers,
+        doelgroep,
+        standaard_kosten: kosten,
+        standaard_duur_minuten: duurMin,
+        webshop_url: null,
+        toelichting_url: null,
+        aangemaakt_door: med1Id,
+        aangemaakt_op: new Date().toISOString(),
+    })
+
+    const workshopTemplates = [
+        wt('Micro:Bit – Aan de slag met programmeren', 'Micro:bits set', '8-12 jr'),
+        wt('Micro:Bit – LEGO Wonder Building Kit', 'Micro:bits set + Wonder Building Kit', '8-12 jr'),
+        wt('Micro:Bit – AI & Machine Learning', 'Micro:bits set', '8-15 jr'),
+        wt('OZOBOT Evo – Kleuren & Coderen', 'OZOBOT Evo set', '8-12 jr'),
+        wt('OZOBOT Evo – Verdieping', 'OZOBOT Evo set', '8-12 jr'),
+        wt('3D Printen – Ontwerp & print je eigen creatie', '3D printer', '12+', 6),
+        wt('Lasersnijden – Ontwerp je creatie', 'Lasersnijder', '12+', 6),
+        wt('Vinylsnijden – Ontwerp je eigen boek met Sprayed Edges', 'Lasersnijder', '12+', 6),
+        wt('Virtual Reality – Bouw je eigen wereld', 'Virtual Reality (2 sets)', '8-12 jr', 16),
+        wt('LEGO Spike – Ontwerpen & experimenteren', 'iPads + LEGO Spike sets (inclusief hubs in blauwe reservedoos!)', '8-12 jr'),
+        wt('Alles Robots! – Robotcarousel', '4x Sphero Indi + 4x Photon + 4x OZOBOT + 4x bolt', '8-12 jr', 16),
+        wt('AI voor kinderen (NextGenAI)', null, '8-12 jr'),
+        wt('Open Digilab in de vakantie', '4x bolt + 4x VR-brillen + 4x OZOBOT + 4x Sphero Indi', '4-12 jr', 20, 120),
+        wt('Warhammer Launch Party', null, '12+', 20, 120),
+        wt('Sphero Indi in de bieb', 'Sphero Indi 2 set', '4-8 jr'),
+        wt('AI VibeLab', null, 'Volwassenen', 15, 90),
+    ]
+
     const newDB = {
         version: DB_VERSION,
         medewerkers: [
-            { id: med1Id, naam: 'Jasper Geertsma', email: 'jasper@bibliotheek.nl', pincode_hash: pinHash, aangemaakt_op: new Date().toISOString() },
-            { id: med2Id, naam: 'Lisa van den Berg', email: 'lisa@bibliotheek.nl', pincode_hash: pinHash2, aangemaakt_op: new Date().toISOString() },
+            { id: med1Id, naam: 'Jasper Geertsma', email: 'jasper@bibliotheek.nl', pincode_hash: pinHash, rol: 'beheerder', aangemaakt_op: new Date().toISOString() },
+            { id: med2Id, naam: 'Lisa van den Berg', email: 'lisa@bibliotheek.nl', pincode_hash: pinHash2, rol: 'medewerker', aangemaakt_op: new Date().toISOString() },
         ],
         materiaal: materiaalItems,
         transacties: [
@@ -261,6 +298,7 @@ export async function initMockDB() {
                 status: 'actief', aangemaakt_op: new Date().toISOString(),
             },
         ],
+        workshop_templates: workshopTemplates,
     }
 
     saveDB(newDB)
@@ -281,7 +319,7 @@ export async function mockRegistreer({ naam, email, pincode }) {
     if (db.medewerkers.find(m => m.email === email)) {
         throw { code: '23505', message: 'Dit e-mailadres is al geregistreerd' }
     }
-    const nieuw = { id: uuid(), naam, email, pincode_hash, aangemaakt_op: new Date().toISOString() }
+    const nieuw = { id: uuid(), naam, email, pincode_hash, rol: 'medewerker', aangemaakt_op: new Date().toISOString() }
     db.medewerkers.push(nieuw)
     saveDB(db)
     return nieuw
@@ -637,6 +675,50 @@ export function mockMarkeerOpgehaald(reserveringId) {
     const idx = db.reserveringen.findIndex(r => r.id === reserveringId)
     if (idx === -1) throw new Error('Reservering niet gevonden')
     db.reserveringen[idx] = { ...db.reserveringen[idx], status: 'opgehaald' }
+    saveDB(db)
+}
+
+// ── Workshop Templates mock functies ────────────────────────────
+
+export function mockGetAlleWorkshopTemplates() {
+    const db = getDB()
+    if (!db.workshop_templates) return []
+    return db.workshop_templates.sort((a, b) => a.titel.localeCompare(b.titel))
+}
+
+export function mockGetWorkshopTemplate(id) {
+    const db = getDB()
+    if (!db.workshop_templates) return null
+    return db.workshop_templates.find(t => t.id === id) || null
+}
+
+export function mockMaakWorkshopTemplate(template) {
+    const db = getDB()
+    if (!db.workshop_templates) db.workshop_templates = []
+    const nieuw = {
+        id: uuid(),
+        ...template,
+        aangemaakt_op: new Date().toISOString(),
+    }
+    db.workshop_templates.push(nieuw)
+    saveDB(db)
+    return nieuw
+}
+
+export function mockUpdateWorkshopTemplate(id, updates) {
+    const db = getDB()
+    if (!db.workshop_templates) throw new Error('Geen templates')
+    const idx = db.workshop_templates.findIndex(t => t.id === id)
+    if (idx === -1) throw new Error('Template niet gevonden')
+    db.workshop_templates[idx] = { ...db.workshop_templates[idx], ...updates }
+    saveDB(db)
+    return db.workshop_templates[idx]
+}
+
+export function mockVerwijderWorkshopTemplate(id) {
+    const db = getDB()
+    if (!db.workshop_templates) return
+    db.workshop_templates = db.workshop_templates.filter(t => t.id !== id)
     saveDB(db)
 }
 

@@ -1,27 +1,33 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState } from 'react'
+import { isBeheerder as checkBeheerder } from '../lib/auth'
 
 const AuthContext = createContext(null)
 
-export function AuthProvider({ children }) {
-    const [medewerker, setMedewerker] = useState(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        // Herstel sessie uit localStorage
+function haalOpgeslagenMedewerker() {
+    try {
         const opgeslagen = localStorage.getItem('digilab_medewerker')
-        if (opgeslagen) {
-            try {
-                setMedewerker(JSON.parse(opgeslagen))
-            } catch {
-                localStorage.removeItem('digilab_medewerker')
-            }
-        }
-        setLoading(false)
-    }, [])
+        return opgeslagen ? JSON.parse(opgeslagen) : null
+    } catch {
+        localStorage.removeItem('digilab_medewerker')
+        return null
+    }
+}
+
+export function AuthProvider({ children }) {
+    const [medewerker, setMedewerker] = useState(haalOpgeslagenMedewerker)
+    const loading = false
 
     const login = (medewerkerData) => {
-        setMedewerker(medewerkerData)
-        localStorage.setItem('digilab_medewerker', JSON.stringify(medewerkerData))
+        // Sla alleen veilige velden op (geen pincode_hash)
+        const safeData = {
+            id: medewerkerData.id,
+            naam: medewerkerData.naam,
+            email: medewerkerData.email,
+            rol: medewerkerData.rol,
+            aangemaakt_op: medewerkerData.aangemaakt_op,
+        }
+        setMedewerker(safeData)
+        localStorage.setItem('digilab_medewerker', JSON.stringify(safeData))
     }
 
     const logout = () => {
@@ -35,13 +41,16 @@ export function AuthProvider({ children }) {
         localStorage.setItem('digilab_medewerker', JSON.stringify(bijgewerkt))
     }
 
+    const isBeheerder = checkBeheerder(medewerker)
+
     return (
-        <AuthContext.Provider value={{ medewerker, loading, login, logout, updateMedewerker }}>
+        <AuthContext.Provider value={{ medewerker, loading, login, logout, updateMedewerker, isBeheerder }}>
             {children}
         </AuthContext.Provider>
     )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const ctx = useContext(AuthContext)
     if (!ctx) throw new Error('useAuth moet binnen AuthProvider gebruikt worden')

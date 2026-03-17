@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS medewerkers (
   naam            TEXT NOT NULL,
   email           TEXT NOT NULL UNIQUE,
   pincode_hash    TEXT NOT NULL,
+  rol             TEXT NOT NULL DEFAULT 'medewerker' CHECK (rol IN ('medewerker', 'beheerder')),
   aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -73,6 +74,24 @@ CREATE TABLE IF NOT EXISTS reserveringen (
   aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 6. Workshop templates (catalogus)
+CREATE TABLE IF NOT EXISTS workshop_templates (
+  id                      UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  titel                   TEXT NOT NULL,
+  toelichting             TEXT,
+  materiaal_omschrijving  TEXT,           -- bijv. "Micro:bits set" (vrije tekst)
+  materiaal_ids           UUID[],         -- verwijzingen naar materiaal-tabel
+  min_deelnemers          INTEGER DEFAULT 1,
+  max_deelnemers          INTEGER DEFAULT 10,
+  doelgroep               TEXT,           -- bijv. '8-12 jr', 'Volwassenen'
+  standaard_kosten        DECIMAL(6,2),
+  standaard_duur_minuten  INTEGER DEFAULT 60,
+  webshop_url             TEXT,
+  toelichting_url         TEXT,
+  aangemaakt_door         UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
+  aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- Indexen voor performance
 -- ============================================================
@@ -95,7 +114,9 @@ ALTER TABLE materiaal          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transacties        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onderhoudsmeldingen ENABLE ROW LEVEL SECURITY;
 
--- Iedereen mag lezen en schrijven (geen rollen in MVP)
+ALTER TABLE workshop_templates  ENABLE ROW LEVEL SECURITY;
+
+-- Iedereen mag lezen; schrijven beperkt tot beheerders in de app-laag
 CREATE POLICY "Iedereen kan medewerkers zien" ON medewerkers
   FOR SELECT USING (true);
 
@@ -112,6 +133,9 @@ CREATE POLICY "Iedereen kan transacties zien en aanmaken" ON transacties
   FOR ALL USING (true);
 
 CREATE POLICY "Iedereen kan meldingen zien en aanmaken" ON onderhoudsmeldingen
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan workshop templates zien en beheren" ON workshop_templates
   FOR ALL USING (true);
 
 -- ============================================================
