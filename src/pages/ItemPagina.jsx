@@ -200,9 +200,19 @@ export default function ItemPagina() {
 
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-muted mb-6 hover:text-text-secondary transition-colors">
-                <ArrowLeft size={18} /> Terug
-            </button>
+            <div className="flex items-center justify-between mb-6">
+                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-muted hover:text-text-secondary transition-colors">
+                    <ArrowLeft size={18} /> Terug
+                </button>
+                {isBeheerder && item && (
+                    <Link
+                        to={`/materiaal/${item.id}/bewerken`}
+                        className="py-1.5 px-3 rounded-xl bg-bg-surface border border-overlay/20 text-text-secondary hover:text-primary text-sm flex items-center gap-1.5 transition-colors"
+                    >
+                        <Pencil size={14} /> Bewerken
+                    </Link>
+                )}
+            </div>
 
             {loading && <LaadIndicator />}
 
@@ -226,18 +236,7 @@ export default function ItemPagina() {
                     <div className="card p-5 space-y-4 mb-4">
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h1 className="text-xl font-bold text-text-primary leading-tight">{item.naam}</h1>
-                                    {isBeheerder && (
-                                        <Link
-                                            to={`/materiaal/${item.id}/bewerken`}
-                                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0"
-                                            title="Bewerken"
-                                        >
-                                            <Pencil size={15} />
-                                        </Link>
-                                    )}
-                                </div>
+                                <h1 className="text-xl font-bold text-text-primary leading-tight mb-0.5">{item.naam}</h1>
                                 <div className="flex items-center gap-2 flex-wrap mt-0.5">
                                     <p className="text-text-muted text-sm">{item.type}</p>
                                     {item.merk && (
