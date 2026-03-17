@@ -14,6 +14,9 @@ import ReserverenPagina from './pages/ReserverenPagina'
 import ProfielPagina from './pages/ProfielPagina'
 import WorkshopCatalogus from './pages/WorkshopCatalogus'
 import WorkshopTemplateDetail from './pages/WorkshopTemplateDetail'
+import Kalender from './pages/Kalender'
+import WorkshopInplannen from './pages/WorkshopInplannen'
+import GeplandeWorkshopDetail from './pages/GeplandeWorkshopDetail'
 import BottomNav from './components/BottomNav'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -90,6 +93,11 @@ export default function App() {
         <Route path="/workshops" element={<ProtectedRoute><PageLayout><WorkshopCatalogus /></PageLayout></ProtectedRoute>} />
         <Route path="/workshops/nieuw" element={<BeheerderRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></BeheerderRoute>} />
         <Route path="/workshops/:id" element={<ProtectedRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></ProtectedRoute>} />
+
+        {/* Kalender */}
+        <Route path="/kalender" element={<ProtectedRoute><PageLayout><Kalender /></PageLayout></ProtectedRoute>} />
+        <Route path="/kalender/inplannen" element={<BeheerderRoute><PageLayout><WorkshopInplannen /></PageLayout></BeheerderRoute>} />
+        <Route path="/kalender/:id" element={<ProtectedRoute><PageLayout><GeplandeWorkshopDetail /></PageLayout></ProtectedRoute>} />
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />

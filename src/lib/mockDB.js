@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 4
+const DB_VERSION = 5
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -299,6 +299,58 @@ export async function initMockDB() {
             },
         ],
         workshop_templates: workshopTemplates,
+        geplande_workshops: [
+            {
+                id: uuid(), template_id: workshopTemplates[0].id,
+                titel: workshopTemplates[0].titel, // Micro:Bit – Aan de slag
+                datum: '2026-03-25', start_tijd: '15:30', eind_tijd: '16:30',
+                locatie: 'Nunspeet', doelgroep: '8-12 jr', max_deelnemers: 10,
+                kosten: null, status: 'gepubliceerd', uitvoerder_id: null,
+                ruimte_geregeld: true, in_jaarkalender: true, in_webshop: true,
+                webshop_product_url: null, opmerkingen: null,
+                planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
+            },
+            {
+                id: uuid(), template_id: workshopTemplates[3].id,
+                titel: workshopTemplates[3].titel, // OZOBOT Evo – Kleuren & Coderen
+                datum: '2026-03-26', start_tijd: '15:30', eind_tijd: '16:30',
+                locatie: 'Ermelo', doelgroep: '8-12 jr', max_deelnemers: 10,
+                kosten: null, status: 'gepubliceerd', uitvoerder_id: null,
+                ruimte_geregeld: true, in_jaarkalender: true, in_webshop: false,
+                webshop_product_url: null, opmerkingen: null,
+                planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
+            },
+            {
+                id: uuid(), template_id: workshopTemplates[15].id,
+                titel: workshopTemplates[15].titel, // AI VibeLab
+                datum: '2026-03-27', start_tijd: '13:00', eind_tijd: '14:30',
+                locatie: 'Ermelo', doelgroep: 'Volwassenen', max_deelnemers: 15,
+                kosten: null, status: 'concept', uitvoerder_id: null,
+                ruimte_geregeld: false, in_jaarkalender: false, in_webshop: false,
+                webshop_product_url: null, opmerkingen: 'Laatste vrijdag van de maand',
+                planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
+            },
+            {
+                id: uuid(), template_id: workshopTemplates[5].id,
+                titel: workshopTemplates[5].titel, // 3D Printen
+                datum: '2026-04-01', start_tijd: '15:30', eind_tijd: '16:30',
+                locatie: 'Nunspeet', doelgroep: '12+', max_deelnemers: 6,
+                kosten: null, status: 'concept', uitvoerder_id: null,
+                ruimte_geregeld: false, in_jaarkalender: false, in_webshop: false,
+                webshop_product_url: null, opmerkingen: null,
+                planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
+            },
+            {
+                id: uuid(), template_id: workshopTemplates[8].id,
+                titel: workshopTemplates[8].titel, // Virtual Reality
+                datum: '2026-04-02', start_tijd: '15:30', eind_tijd: '16:30',
+                locatie: 'Ermelo', doelgroep: '8-12 jr', max_deelnemers: 16,
+                kosten: null, status: 'concept', uitvoerder_id: null,
+                ruimte_geregeld: false, in_jaarkalender: false, in_webshop: false,
+                webshop_product_url: null, opmerkingen: null,
+                planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
+            },
+        ],
     }
 
     saveDB(newDB)
@@ -719,6 +771,73 @@ export function mockVerwijderWorkshopTemplate(id) {
     const db = getDB()
     if (!db.workshop_templates) return
     db.workshop_templates = db.workshop_templates.filter(t => t.id !== id)
+    saveDB(db)
+}
+
+// ── Geplande Workshops mock functies ────────────────────────────
+
+function enrichGeplandeWorkshop(gw, db) {
+    const tmpl = db.workshop_templates?.find(t => t.id === gw.template_id)
+    const uitvoerder = gw.uitvoerder_id ? db.medewerkers.find(m => m.id === gw.uitvoerder_id) : null
+    return {
+        ...gw,
+        template: tmpl ? { id: tmpl.id, titel: tmpl.titel, materiaal_omschrijving: tmpl.materiaal_omschrijving } : null,
+        uitvoerder: uitvoerder ? { id: uitvoerder.id, naam: uitvoerder.naam } : null,
+    }
+}
+
+export function mockGetAlleGeplandeWorkshops() {
+    const db = getDB()
+    if (!db.geplande_workshops) return []
+    return db.geplande_workshops
+        .map(gw => enrichGeplandeWorkshop(gw, db))
+        .sort((a, b) => a.datum.localeCompare(b.datum))
+}
+
+export function mockGetGeplandeWorkshop(id) {
+    const db = getDB()
+    if (!db.geplande_workshops) return null
+    const gw = db.geplande_workshops.find(w => w.id === id)
+    if (!gw) return null
+    return enrichGeplandeWorkshop(gw, db)
+}
+
+export function mockGetGeplandeWorkshopsVoorPeriode(vanDatum, totDatum) {
+    const db = getDB()
+    if (!db.geplande_workshops) return []
+    return db.geplande_workshops
+        .filter(gw => gw.datum >= vanDatum && gw.datum <= totDatum)
+        .map(gw => enrichGeplandeWorkshop(gw, db))
+        .sort((a, b) => a.datum.localeCompare(b.datum))
+}
+
+export function mockMaakGeplandeWorkshop(workshop) {
+    const db = getDB()
+    if (!db.geplande_workshops) db.geplande_workshops = []
+    const nieuw = {
+        id: uuid(),
+        ...workshop,
+        aangemaakt_op: new Date().toISOString(),
+    }
+    db.geplande_workshops.push(nieuw)
+    saveDB(db)
+    return enrichGeplandeWorkshop(nieuw, db)
+}
+
+export function mockUpdateGeplandeWorkshop(id, updates) {
+    const db = getDB()
+    if (!db.geplande_workshops) throw new Error('Geen geplande workshops')
+    const idx = db.geplande_workshops.findIndex(w => w.id === id)
+    if (idx === -1) throw new Error('Geplande workshop niet gevonden')
+    db.geplande_workshops[idx] = { ...db.geplande_workshops[idx], ...updates }
+    saveDB(db)
+    return enrichGeplandeWorkshop(db.geplande_workshops[idx], db)
+}
+
+export function mockVerwijderGeplandeWorkshop(id) {
+    const db = getDB()
+    if (!db.geplande_workshops) return
+    db.geplande_workshops = db.geplande_workshops.filter(w => w.id !== id)
     saveDB(db)
 }
 

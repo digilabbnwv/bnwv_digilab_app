@@ -92,6 +92,30 @@ CREATE TABLE IF NOT EXISTS workshop_templates (
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 7. Geplande workshops (kalender)
+CREATE TABLE IF NOT EXISTS geplande_workshops (
+  id                      UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  template_id             UUID REFERENCES workshop_templates(id) ON DELETE SET NULL,
+  titel                   TEXT NOT NULL,
+  datum                   DATE NOT NULL,
+  start_tijd              TIME NOT NULL,
+  eind_tijd               TIME NOT NULL,
+  locatie                 TEXT NOT NULL,
+  doelgroep               TEXT,
+  max_deelnemers          INTEGER DEFAULT 10,
+  kosten                  DECIMAL(6,2),
+  status                  TEXT NOT NULL DEFAULT 'concept' CHECK (status IN ('concept', 'gepubliceerd', 'geannuleerd')),
+  uitvoerder_id           UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
+  ruimte_geregeld         BOOLEAN DEFAULT false,
+  in_jaarkalender         BOOLEAN DEFAULT false,
+  in_webshop              BOOLEAN DEFAULT false,
+  webshop_product_url     TEXT,
+  opmerkingen             TEXT,
+  planning_batch_id       UUID,
+  aangemaakt_door         UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
+  aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- Indexen voor performance
 -- ============================================================
@@ -105,6 +129,9 @@ CREATE INDEX IF NOT EXISTS idx_onderhoud_status ON onderhoudsmeldingen(status);
 CREATE INDEX IF NOT EXISTS idx_reserveringen_materiaal ON reserveringen(materiaal_id);
 CREATE INDEX IF NOT EXISTS idx_reserveringen_medewerker ON reserveringen(medewerker_id);
 CREATE INDEX IF NOT EXISTS idx_reserveringen_datum ON reserveringen(van_datum, tot_datum);
+CREATE INDEX IF NOT EXISTS idx_geplande_workshops_datum ON geplande_workshops(datum);
+CREATE INDEX IF NOT EXISTS idx_geplande_workshops_status ON geplande_workshops(status);
+CREATE INDEX IF NOT EXISTS idx_geplande_workshops_locatie ON geplande_workshops(locatie);
 
 -- ============================================================
 -- Row Level Security (RLS) — Eenvoudig: alle medewerkers mogen alles
@@ -115,6 +142,7 @@ ALTER TABLE transacties        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onderhoudsmeldingen ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE workshop_templates  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE geplande_workshops  ENABLE ROW LEVEL SECURITY;
 
 -- Iedereen mag lezen; schrijven beperkt tot beheerders in de app-laag
 CREATE POLICY "Iedereen kan medewerkers zien" ON medewerkers
@@ -136,6 +164,9 @@ CREATE POLICY "Iedereen kan meldingen zien en aanmaken" ON onderhoudsmeldingen
   FOR ALL USING (true);
 
 CREATE POLICY "Iedereen kan workshop templates zien en beheren" ON workshop_templates
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan geplande workshops zien en beheren" ON geplande_workshops
   FOR ALL USING (true);
 
 -- ============================================================

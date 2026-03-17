@@ -5,8 +5,8 @@ import { LayoutDashboard, Package, Wrench, BookOpen, CalendarDays, User } from '
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Home' },
     { to: '/materiaal', icon: Package, label: 'Materiaal' },
+    { to: '/kalender', icon: CalendarDays, label: 'Kalender' },
     { to: '/workshops', icon: BookOpen, label: 'Workshops' },
-    { to: '/melding', icon: Wrench, label: 'Meldingen' },
     { to: '/profiel', icon: User, label: 'Profiel' },
 ]
 
