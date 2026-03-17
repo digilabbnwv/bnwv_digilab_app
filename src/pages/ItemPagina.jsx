@@ -207,7 +207,7 @@ export default function ItemPagina() {
                 {isBeheerder && item && (
                     <Link
                         to={`/materiaal/${item.id}/bewerken`}
-                        className="py-1.5 px-3 rounded-xl bg-bg-surface border border-overlay/20 text-text-secondary hover:text-primary text-sm flex items-center gap-1.5 transition-colors"
+                        className="btn-accent py-1.5 px-3 text-sm flex items-center gap-1.5"
                     >
                         <Pencil size={14} /> Bewerken
                     </Link>
