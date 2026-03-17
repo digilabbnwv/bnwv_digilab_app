@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getAlleGeplandeWorkshops } from '../lib/geplandeWorkshops'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3 } from 'lucide-react'
+import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3, Wand2 } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 const STATUSSEN = [
@@ -132,9 +132,14 @@ export default function Kalender() {
                         </button>
                     </div>
                     {isBeheerder && (
-                        <Link to="/kalender/inplannen" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
-                            <Plus size={16} /> Inplannen
-                        </Link>
+                        <>
+                            <Link to="/kalender/genereren" className="py-2 px-3 rounded-xl bg-bg-surface border border-overlay/20 text-text-secondary hover:text-primary text-sm flex items-center gap-1.5 transition-colors">
+                                <Wand2 size={15} /> Genereren
+                            </Link>
+                            <Link to="/kalender/inplannen" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                                <Plus size={16} /> Inplannen
+                            </Link>
+                        </>
                     )}
                 </div>
             </div>

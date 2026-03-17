@@ -17,6 +17,7 @@ import WorkshopTemplateDetail from './pages/WorkshopTemplateDetail'
 import Kalender from './pages/Kalender'
 import WorkshopInplannen from './pages/WorkshopInplannen'
 import GeplandeWorkshopDetail from './pages/GeplandeWorkshopDetail'
+import PlanningGenereren from './pages/PlanningGenereren'
 import BottomNav from './components/BottomNav'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -97,6 +98,7 @@ export default function App() {
         {/* Kalender */}
         <Route path="/kalender" element={<ProtectedRoute><PageLayout><Kalender /></PageLayout></ProtectedRoute>} />
         <Route path="/kalender/inplannen" element={<BeheerderRoute><PageLayout><WorkshopInplannen /></PageLayout></BeheerderRoute>} />
+        <Route path="/kalender/genereren" element={<BeheerderRoute><PageLayout><PlanningGenereren /></PageLayout></BeheerderRoute>} />
         <Route path="/kalender/:id" element={<ProtectedRoute><PageLayout><GeplandeWorkshopDetail /></PageLayout></ProtectedRoute>} />
 
         {/* Reserveren */}
