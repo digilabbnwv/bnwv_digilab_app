@@ -8,13 +8,13 @@ import { getReserveringenVoorItem, getEersteActieveReservering, computeReserveri
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
-import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 
 export default function ItemPagina() {
     const { qrCode } = useParams()
-    const { medewerker } = useAuth()
+    const { medewerker, isBeheerder } = useAuth()
     const navigate = useNavigate()
 
     const [item, setItem] = useState(null)
@@ -226,7 +226,18 @@ export default function ItemPagina() {
                     <div className="card p-5 space-y-4 mb-4">
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                                <h1 className="text-xl font-bold text-text-primary leading-tight">{item.naam}</h1>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h1 className="text-xl font-bold text-text-primary leading-tight">{item.naam}</h1>
+                                    {isBeheerder && (
+                                        <Link
+                                            to={`/materiaal/${item.id}/bewerken`}
+                                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0"
+                                            title="Bewerken"
+                                        >
+                                            <Pencil size={15} />
+                                        </Link>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-2 flex-wrap mt-0.5">
                                     <p className="text-text-muted text-sm">{item.type}</p>
                                     {item.merk && (

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
-import { Search, Package, Plus, MapPin, User, AlertTriangle, Pencil } from 'lucide-react'
+import { Search, Package, Plus, MapPin, User, AlertTriangle } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 
@@ -127,41 +127,31 @@ export default function MateriaalOverzicht() {
                     {gefilterd.map(item => {
                         const openMeldingen = item.onderhoudsmeldingen?.filter(m => m.status === 'open') || []
                         return (
-                            <div key={item.id} className="card flex items-center hover:bg-bg-hover transition-colors">
-                                <Link
-                                    to={`/item/${item.qr_code}`}
-                                    className="flex items-center gap-3 p-4 flex-1 min-w-0"
-                                >
-                                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                        <Package size={18} className="text-primary" />
+                            <Link
+                                key={item.id}
+                                to={`/item/${item.qr_code}`}
+                                className="card flex items-center gap-3 p-4 hover:bg-bg-hover transition-colors"
+                            >
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <Package size={18} className="text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-text-primary truncate">{item.naam}</p>
+                                        {openMeldingen.length > 0 && (
+                                            <AlertTriangle size={14} className="text-error flex-shrink-0" />
+                                        )}
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-medium text-text-primary truncate">{item.naam}</p>
-                                            {openMeldingen.length > 0 && (
-                                                <AlertTriangle size={14} className="text-error flex-shrink-0" />
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-text-muted">{item.type}</p>
-                                        <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1">
-                                            {item.status === 'in_gebruik'
-                                                ? <><User size={11} /> {item.huidige_medewerker?.naam || 'onbekend'}</>
-                                                : <><MapPin size={11} /> {item.huidige_locatie || item.standaard_locatie || '—'}</>
-                                            }
-                                        </p>
-                                    </div>
-                                    <StatusBadge status={item.status} />
-                                </Link>
-                                {isBeheerder && (
-                                    <Link
-                                        to={`/materiaal/${item.id}/bewerken`}
-                                        className="p-4 pl-2 text-text-muted hover:text-primary transition-colors flex-shrink-0"
-                                        title="Bewerken"
-                                    >
-                                        <Pencil size={16} />
-                                    </Link>
-                                )}
-                            </div>
+                                    <p className="text-xs text-text-muted">{item.type}</p>
+                                    <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1">
+                                        {item.status === 'in_gebruik'
+                                            ? <><User size={11} /> {item.huidige_medewerker?.naam || 'onbekend'}</>
+                                            : <><MapPin size={11} /> {item.huidige_locatie || item.standaard_locatie || '—'}</>
+                                        }
+                                    </p>
+                                </div>
+                                <StatusBadge status={item.status} />
+                            </Link>
                         )
                     })}
                 </div>
