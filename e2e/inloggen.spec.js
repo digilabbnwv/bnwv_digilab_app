@@ -20,9 +20,9 @@ test.describe('Inloggen op Digilab', () => {
     const loginKnop = page.getByRole('button', { name: /inloggen/i }).first();
     await loginKnop.click();
 
-    // MOCK DB logt nu in en redirect naar het Dashboard. We zoeken naar de Scan QR knop.
-    const scanKnop = page.getByText('Scan QR', { exact: false }).first();
-    await expect(scanKnop).toBeVisible();
+    // Na inloggen landen we op het Dashboard. We zoeken naar de snelknoppen.
+    const reserverenKnop = page.getByText('Reserveren', { exact: false }).first();
+    await expect(reserverenKnop).toBeVisible();
 
     // Laten we ook even uitloggen om de cirkel rond te maken. (Via het Profiel scherm)
     const profielKnop = page.getByRole('link', { name: /profiel/i }).first();
