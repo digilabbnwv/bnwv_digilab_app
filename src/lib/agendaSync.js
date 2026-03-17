@@ -12,6 +12,9 @@
  *
  *   // Bij annulering:
  *   await syncAgendaAnnuleren(reservering)
+ *
+ *   // Bij publiceren/annuleren van een geplande workshop:
+ *   await syncWorkshopAgenda(geplandeWorkshop, 'aanmaken' | 'annuleren' | 'wijzigen')
  */
 
 import { supabase } from './supabase'
@@ -95,5 +98,38 @@ export async function syncAgendaWijzigen(reservering) {
         van_datum:       reservering.van_datum,
         tot_datum:       reservering.tot_datum,
         toelichting:     reservering.toelichting ?? undefined,
+    })
+}
+
+/**
+ * Sync een geplande workshop naar de juiste Digilab-agenda in Outlook.
+ *
+ * Alleen Ermelo en Nunspeet krijgen een agenda-event. Andere locaties worden
+ * overgeslagen (geen Outlook-sync voor incidentele locaties).
+ *
+ * @param {object} workshop - Volledig geplandeWorkshop-object
+ * @param {'aanmaken'|'annuleren'|'wijzigen'} actie
+ */
+export async function syncWorkshopAgenda(workshop, actie) {
+    const locatie = workshop.locatie?.toLowerCase()
+    if (locatie !== 'ermelo' && locatie !== 'nunspeet') {
+        console.info(`[agendaSync] Geen Outlook-sync voor locatie: ${workshop.locatie}`)
+        return
+    }
+
+    const agendaType = locatie === 'ermelo' ? 'digilab_ermelo' : 'digilab_nunspeet'
+
+    await roepEdgeFunctionAan({
+        agenda_type:            agendaType,
+        actie,
+        workshop_id:            workshop.id,
+        titel:                  workshop.titel,
+        datum:                  workshop.datum,
+        start_tijd:             workshop.start_tijd?.slice(0, 5) ?? '15:30',
+        eind_tijd:              workshop.eind_tijd?.slice(0, 5)  ?? '16:30',
+        locatie:                workshop.locatie,
+        materiaal_omschrijving: workshop.materiaal_omschrijving  ?? '',
+        max_deelnemers:         workshop.max_deelnemers          ?? undefined,
+        opmerkingen:            workshop.opmerkingen             ?? undefined,
     })
 }

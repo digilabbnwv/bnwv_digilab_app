@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getGeplandeWorkshop, updateGeplandeWorkshop, verwijderGeplandeWorkshop } from '../lib/geplandeWorkshops'
+import { syncWorkshopAgenda } from '../lib/agendaSync'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
 import { ArrowLeft, Save, Trash2, CalendarDays, MapPin, Clock, Users, Euro, CheckCircle2, Globe, Megaphone } from 'lucide-react'
@@ -45,7 +46,14 @@ export default function GeplandeWorkshopDetail() {
         setSaving(true)
         try {
             await updateGeplandeWorkshop(id, { status: nieuweStatus })
-            setWorkshop(w => ({ ...w, status: nieuweStatus }))
+            const bijgewerkt = { ...workshop, status: nieuweStatus }
+            setWorkshop(bijgewerkt)
+            // Sync naar Outlook-agenda bij publiceren of annuleren
+            if (nieuweStatus === 'gepubliceerd') {
+                await syncWorkshopAgenda(bijgewerkt, 'aanmaken')
+            } else if (nieuweStatus === 'geannuleerd') {
+                await syncWorkshopAgenda(bijgewerkt, 'annuleren')
+            }
         } catch (err) {
             alert('Fout: ' + err.message)
         } finally {
