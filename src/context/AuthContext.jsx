@@ -1,14 +1,17 @@
 import { createContext, useContext, useState } from 'react'
-import { isBeheerder as checkBeheerder } from '../lib/auth'
+import { isBeheerder as checkBeheerder, herstelJwtSessie, uitloggen as jwtUitloggen } from '../lib/auth'
 
 const AuthContext = createContext(null)
 
 function haalOpgeslagenMedewerker() {
     try {
+        // Herstel JWT voor Supabase-verzoeken bij app-start
+        herstelJwtSessie()
         const opgeslagen = localStorage.getItem('digilab_medewerker')
         return opgeslagen ? JSON.parse(opgeslagen) : null
     } catch {
         localStorage.removeItem('digilab_medewerker')
+        localStorage.removeItem('digilab_jwt')
         return null
     }
 }
@@ -31,6 +34,7 @@ export function AuthProvider({ children }) {
     }
 
     const logout = () => {
+        jwtUitloggen()   // Wis JWT uit memory én localStorage
         setMedewerker(null)
         localStorage.removeItem('digilab_medewerker')
     }

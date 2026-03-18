@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, setJwt, clearJwt } from './supabase'
 import {
     mockRegistreer, mockInloggen, mockVerifyPin, mockUpdatePincode, mockUpdateNaam
 } from './mockDB'
@@ -9,7 +9,7 @@ export function isBeheerder(medewerker) {
     return medewerker?.rol === 'beheerder'
 }
 
-// Eenvoudige hash functie voor pincode
+// Lokale hash alleen nog nodig voor verifyPin (pincode-bevestiging binnen de app)
 export async function hashPin(pin) {
     const encoder = new TextEncoder()
     const data = encoder.encode(pin + 'digilab_salt_2026')
@@ -18,33 +18,58 @@ export async function hashPin(pin) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+/**
+ * Hersel de JWT-sessie bij het opstarten van de app.
+ * Moet aangeroepen worden vóór het eerste Supabase-verzoek.
+ */
+export function herstelJwtSessie() {
+    if (MOCK) return
+    const jwt = localStorage.getItem('digilab_jwt')
+    if (jwt) setJwt(jwt)
+}
+
+/** Registreert een nieuwe medewerker via de Edge Function. */
 export async function registreer({ naam, email, pincode }) {
     if (MOCK) return mockRegistreer({ naam, email, pincode })
 
-    const pincode_hash = await hashPin(pincode)
-    const { data, error } = await supabase
-        .from('medewerkers')
-        .insert([{ naam, email, pincode_hash }])
-        .select()
-        .single()
-    if (error) throw error
-    return data
+    const { data, error } = await supabase.functions.invoke('medewerker-auth', {
+        body: { action: 'registreer', naam, email, pincode },
+    })
+    if (error || data?.error) throw new Error(data?.error || 'Registratie mislukt')
+
+    setJwt(data.jwt)
+    localStorage.setItem('digilab_jwt', data.jwt)
+    return data.medewerker
 }
 
+/**
+ * Logt een medewerker in via de Edge Function.
+ * De Edge Function verifieert de pincode server-side en geeft een JWT terug
+ * die wordt gebruikt voor alle verdere Supabase-verzoeken.
+ */
 export async function inloggen({ email, pincode }) {
     if (MOCK) return mockInloggen({ email: email.toLowerCase().trim(), pincode })
 
-    const pincode_hash = await hashPin(pincode)
-    const { data, error } = await supabase
-        .from('medewerkers')
-        .select('id, naam, email, rol, aangemaakt_op')
-        .eq('email', email.toLowerCase().trim())
-        .eq('pincode_hash', pincode_hash)
-        .single()
-    if (error || !data) throw new Error('Onjuist e-mailadres of pincode')
-    return data
+    const { data, error } = await supabase.functions.invoke('medewerker-auth', {
+        body: { action: 'login', email, pincode },
+    })
+    if (error || data?.error) throw new Error(data?.error || 'Onjuist e-mailadres of pincode')
+
+    setJwt(data.jwt)
+    localStorage.setItem('digilab_jwt', data.jwt)
+    return data.medewerker
 }
 
+/** Logt de huidige medewerker uit. */
+export function uitloggen() {
+    clearJwt()
+    localStorage.removeItem('digilab_jwt')
+}
+
+/**
+ * Verifieert de pincode van een medewerker (bijv. voor PIN-wijziging).
+ * Gebruikt pincode_hash in de WHERE-clause — nooit teruggestuurd naar de client.
+ */
 export async function verifyPin(medewerker_id, pincode) {
     if (MOCK) return mockVerifyPin(medewerker_id, pincode)
 
