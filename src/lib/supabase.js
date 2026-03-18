@@ -36,7 +36,12 @@ export const supabase = createClient(
         },
         global: {
             fetch: (url, options = {}) => {
-                if (_jwt) {
+                // Alleen JWT injecteren voor PostgREST-calls, niet voor Edge Functions.
+                // Edge Functions doen hun eigen auth (medewerker-auth signeert de JWT).
+                // Als we de JWT ook naar Edge Functions sturen, blokkeert Supabase
+                // de login-aanroep wanneer de opgeslagen JWT verlopen/ongeldig is.
+                const isDatabase = typeof url === 'string' && url.includes('/rest/v1/')
+                if (_jwt && isDatabase) {
                     options.headers = {
                         ...options.headers,
                         Authorization: `Bearer ${_jwt}`,

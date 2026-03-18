@@ -131,10 +131,11 @@ function maakJwtVoorMedewerker(
     {
       sub: medewerker.id,
       email: medewerker.email,
-      role: 'authenticated',   // PostgREST gebruikt deze role
+      role: 'authenticated',      // PostgREST database-role
+      aud: 'authenticated',       // Verplicht door Supabase PostgREST jwt-aud config
       iss: 'supabase',
       iat: now,
-      exp: now + 8 * 60 * 60, // 8 uur geldig
+      exp: now + 8 * 60 * 60,    // 8 uur geldig
       medewerker_rol: medewerker.rol, // voor RLS-policies
     },
     secret,
