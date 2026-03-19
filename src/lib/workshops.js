@@ -36,6 +36,19 @@ export async function getWorkshopTemplate(id) {
         .eq('id', id)
         .single()
     if (error) throw error
+
+    // Haal gekoppeld materiaal op via de UUID-array
+    if (data?.materiaal_ids?.length) {
+        const { data: mat } = await supabase
+            .from('materiaal')
+            .select('id, naam, type')
+            .in('id', data.materiaal_ids)
+            .order('naam')
+        data.gekoppeld_materiaal = mat || []
+    } else {
+        data.gekoppeld_materiaal = []
+    }
+
     return data
 }
 
