@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getAlleGeplandeWorkshops } from '../lib/geplandeWorkshops'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3, Wand2 } from 'lucide-react'
+import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3, Wand2, User } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 const STATUSSEN = [
@@ -73,7 +73,8 @@ export default function Kalender() {
             res = res.filter(w =>
                 w.titel?.toLowerCase().includes(q) ||
                 w.locatie?.toLowerCase().includes(q) ||
-                w.opmerkingen?.toLowerCase().includes(q)
+                w.opmerkingen?.toLowerCase().includes(q) ||
+                w.uitvoerder?.naam?.toLowerCase().includes(q)
             )
         }
         if (statusFilter !== 'alle') {
@@ -312,9 +313,16 @@ export default function Kalender() {
                                         </span>
                                     )}
                                 </div>
-                                {workshop.opmerkingen && (
-                                    <p className="text-xs text-text-muted mt-0.5 italic truncate">{workshop.opmerkingen}</p>
-                                )}
+                                <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted">
+                                    {workshop.uitvoerder?.naam && (
+                                        <span className="flex items-center gap-1 truncate">
+                                            <User size={11} /> {workshop.uitvoerder.naam}
+                                        </span>
+                                    )}
+                                    {workshop.opmerkingen && (
+                                        <span className="italic truncate">{workshop.opmerkingen}</span>
+                                    )}
+                                </div>
                             </div>
                         </Link>
                     ))}

@@ -27,7 +27,7 @@ export async function getGeplandeWorkshop(id) {
 
     const { data, error } = await supabase
         .from('geplande_workshops')
-        .select('*, template:workshop_templates(id, titel, materiaal_omschrijving, doelgroep, max_deelnemers, standaard_kosten, standaard_duur_minuten), uitvoerder:medewerkers!uitvoerder_id(id, naam)')
+        .select('*, template:workshop_templates(id, titel, materiaal_omschrijving, doelgroep, max_deelnemers, standaard_kosten, standaard_duur_minuten), uitvoerder:medewerkers!uitvoerder_id(id, naam), gekoppeld_materiaal:materiaal!materiaal_id(id, naam, type)')
         .eq('id', id)
         .single()
     if (error) throw error

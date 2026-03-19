@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getGeplandeWorkshop, updateGeplandeWorkshop, verwijderGeplandeWorkshop } from '../lib/geplandeWorkshops'
 import { syncWorkshopAgenda } from '../lib/agendaSync'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { ArrowLeft, Save, Trash2, CalendarDays, MapPin, Clock, Users, Euro, CheckCircle2, Globe, Megaphone } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, CalendarDays, MapPin, Clock, Users, Euro, CheckCircle2, Globe, Megaphone, Package, User } from 'lucide-react'
 
 const statusKleuren = {
     concept: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -17,12 +18,18 @@ export default function GeplandeWorkshopDetail() {
     const navigate = useNavigate()
     const { isBeheerder } = useAuth()
     const [workshop, setWorkshop] = useState(null)
+    const [medewerkers, setMedewerkers] = useState([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
-        getGeplandeWorkshop(id)
-            .then(setWorkshop)
+        Promise.all([
+            getGeplandeWorkshop(id),
+            supabase.from('medewerkers').select('id, naam').order('naam'),
+        ]).then(([workshopData, { data: medData }]) => {
+            setWorkshop(workshopData)
+            setMedewerkers(medData || [])
+        })
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [id])
@@ -41,6 +48,21 @@ export default function GeplandeWorkshopDetail() {
         }
     }
 
+    async function wijzigUitvoerder(uitvoerderId) {
+        if (!isBeheerder) return
+        setSaving(true)
+        try {
+            const waarde = uitvoerderId || null
+            await updateGeplandeWorkshop(id, { uitvoerder_id: waarde })
+            const gevonden = medewerkers.find(m => m.id === waarde)
+            setWorkshop(w => ({ ...w, uitvoerder_id: waarde, uitvoerder: gevonden ? { id: waarde, naam: gevonden.naam } : null }))
+        } catch (err) {
+            alert('Fout: ' + err.message)
+        } finally {
+            setSaving(false)
+        }
+    }
+
     async function wijzigStatus(nieuweStatus) {
         if (!isBeheerder) return
         setSaving(true)
@@ -48,7 +70,6 @@ export default function GeplandeWorkshopDetail() {
             await updateGeplandeWorkshop(id, { status: nieuweStatus })
             const bijgewerkt = { ...workshop, status: nieuweStatus }
             setWorkshop(bijgewerkt)
-            // Sync naar Outlook-agenda bij publiceren of annuleren
             if (nieuweStatus === 'gepubliceerd') {
                 await syncWorkshopAgenda(bijgewerkt, 'aanmaken')
             } else if (nieuweStatus === 'geannuleerd') {
@@ -80,6 +101,8 @@ export default function GeplandeWorkshopDetail() {
 
     const datumObj = new Date(workshop.datum + 'T00:00:00')
     const datumFormatted = datumObj.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+    const heeftMateriaal = workshop.gekoppeld_materiaal || workshop.template?.materiaal_omschrijving
 
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
@@ -134,10 +157,55 @@ export default function GeplandeWorkshopDetail() {
                 )}
             </div>
 
-            {/* Checkboxen (Excel: Ruimte geres., Jaarkalender, Gepubliceerd) */}
+            {/* Materiaal */}
+            {heeftMateriaal && (
+                <div className="card p-5 mb-4">
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                        <Package size={14} /> Materiaal
+                    </h2>
+                    {workshop.gekoppeld_materiaal && (
+                        <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2.5 mb-2">
+                            <Package size={14} className="text-primary flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-medium text-primary">{workshop.gekoppeld_materiaal.naam}</p>
+                                {workshop.gekoppeld_materiaal.type && (
+                                    <p className="text-xs text-primary/60">{workshop.gekoppeld_materiaal.type}</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {workshop.template?.materiaal_omschrijving && (
+                        <p className="text-sm text-text-secondary">
+                            <span className="text-xs text-text-muted font-medium uppercase tracking-wide">Aanvullend: </span>
+                            {workshop.template.materiaal_omschrijving}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* Voortgang */}
             {isBeheerder && (
                 <div className="card p-5 mb-4">
                     <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">Voortgang</h2>
+
+                    {/* Uitvoerder */}
+                    <div className="mb-4">
+                        <label className="text-xs text-text-muted font-medium uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                            <User size={12} /> Uitvoerder
+                        </label>
+                        <select
+                            className="input"
+                            value={workshop.uitvoerder_id || ''}
+                            onChange={e => wijzigUitvoerder(e.target.value)}
+                            disabled={saving}
+                        >
+                            <option value="">— Nog niet toegewezen —</option>
+                            {medewerkers.map(m => (
+                                <option key={m.id} value={m.id}>{m.naam}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="space-y-3">
                         <button
                             onClick={() => toggleCheckbox('ruimte_geregeld')}
