@@ -86,18 +86,25 @@ export default function ItemPagina() {
         setPinFout('')
         try {
             await verifyPin(medewerker.id, pin)
-            // Check op overrule
+        } catch (err) {
+            setPinFout(err.message || 'Onjuiste pincode')
+            setPinLoading(false)
+            return
+        }
+
+        // Pincode correct — nu uitchecken
+        try {
             if (isUitgechecktDoorCollega) {
                 setStap(4) // overrule bevestiging
             } else {
-                // Direct uitchecken
                 await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
                 setSucces('Item succesvol meegenomen!')
                 sluitActie()
                 laadItem(qrCode)
             }
         } catch (err) {
-            setPinFout(err.message || 'Onjuiste pincode')
+            sluitActie()
+            setFout(`Fout bij meenemen: ${err.message || err.details || JSON.stringify(err)}`)
         } finally {
             setPinLoading(false)
         }
@@ -129,7 +136,8 @@ export default function ItemPagina() {
             sluitActie()
             laadItem(qrCode)
         } catch (err) {
-            setPinFout(err.message)
+            sluitActie()
+            setFout(`Fout bij terugbrengen: ${err.message || err.details || JSON.stringify(err)}`)
         } finally {
             setPinLoading(false)
         }
@@ -141,17 +149,15 @@ export default function ItemPagina() {
             if (actie === 'meenemen') {
                 await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
                 setSucces('Item overgenomen!')
+                sluitActie()
+                laadItem(qrCode)
             } else {
-                // Locatie kiezen eerst
                 setStap(2)
                 setPinLoading(false)
-                return
             }
-            sluitActie()
-            laadItem(qrCode)
         } catch (err) {
-            setPinFout(err.message)
-        } finally {
+            sluitActie()
+            setFout(`Fout bij overnemen: ${err.message || err.details || JSON.stringify(err)}`)
             setPinLoading(false)
         }
     }
