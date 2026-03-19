@@ -300,7 +300,7 @@ export default function Kalender() {
                                     <p className="font-medium text-text-primary truncate">{workshop.titel}</p>
                                     <WorkshopStatusBadge status={workshop.status} />
                                 </div>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-text-muted">
+                                <div className="flex items-center gap-3 mt-1 text-xs text-text-muted flex-wrap">
                                     <span className="flex items-center gap-1">
                                         <Clock size={11} /> {workshop.start_tijd?.slice(0, 5)}–{workshop.eind_tijd?.slice(0, 5)}
                                     </span>
@@ -312,10 +312,8 @@ export default function Kalender() {
                                             <Users size={11} /> max {workshop.max_deelnemers}
                                         </span>
                                     )}
-                                </div>
-                                <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted">
                                     {workshop.uitvoerder?.naam && (
-                                        <span className="flex items-center gap-1 truncate">
+                                        <span className="flex items-center gap-1">
                                             <User size={11} /> {workshop.uitvoerder.naam}
                                         </span>
                                     )}

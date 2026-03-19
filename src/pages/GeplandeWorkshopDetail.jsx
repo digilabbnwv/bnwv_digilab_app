@@ -5,7 +5,7 @@ import { syncWorkshopAgenda } from '../lib/agendaSync'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { ArrowLeft, Save, Trash2, CalendarDays, MapPin, Clock, Users, Euro, CheckCircle2, Globe, Megaphone, Package, User } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, CalendarDays, MapPin, Clock, Users, Euro, CheckCircle2, Globe, Megaphone, Package, User, DoorOpen } from 'lucide-react'
 
 const statusKleuren = {
     concept: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -102,8 +102,6 @@ export default function GeplandeWorkshopDetail() {
     const datumObj = new Date(workshop.datum + 'T00:00:00')
     const datumFormatted = datumObj.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-    const heeftMateriaal = workshop.gekoppeld_materiaal || workshop.template?.materiaal_omschrijving
-
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
             <button onClick={() => navigate('/kalender')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
@@ -147,6 +145,21 @@ export default function GeplandeWorkshopDetail() {
                         <p className="text-text-muted text-xs mb-1 flex items-center gap-1"><Euro size={11} /> Kosten</p>
                         <p className="text-text-primary">{workshop.kosten ? `€ ${workshop.kosten}` : 'Gratis'}</p>
                     </div>
+                    {workshop.gekoppeld_materiaal && (
+                        <div className="bg-bg-app rounded-lg p-3 col-span-2">
+                            <p className="text-text-muted text-xs mb-1 flex items-center gap-1"><Package size={11} /> Materiaal</p>
+                            <p className="text-text-primary">{workshop.gekoppeld_materiaal.naam}</p>
+                            {workshop.template?.materiaal_omschrijving && (
+                                <p className="text-xs text-text-muted mt-0.5">+ {workshop.template.materiaal_omschrijving}</p>
+                            )}
+                        </div>
+                    )}
+                    {!workshop.gekoppeld_materiaal && workshop.template?.materiaal_omschrijving && (
+                        <div className="bg-bg-app rounded-lg p-3 col-span-2">
+                            <p className="text-text-muted text-xs mb-1 flex items-center gap-1"><Package size={11} /> Materiaal</p>
+                            <p className="text-text-primary">{workshop.template.materiaal_omschrijving}</p>
+                        </div>
+                    )}
                 </div>
 
                 {workshop.doelgroep && (
@@ -156,32 +169,6 @@ export default function GeplandeWorkshopDetail() {
                     <p className="text-sm text-text-muted mt-2 italic">{workshop.opmerkingen}</p>
                 )}
             </div>
-
-            {/* Materiaal */}
-            {heeftMateriaal && (
-                <div className="card p-5 mb-4">
-                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                        <Package size={14} /> Materiaal
-                    </h2>
-                    {workshop.gekoppeld_materiaal && (
-                        <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2.5 mb-2">
-                            <Package size={14} className="text-primary flex-shrink-0" />
-                            <div>
-                                <p className="text-sm font-medium text-primary">{workshop.gekoppeld_materiaal.naam}</p>
-                                {workshop.gekoppeld_materiaal.type && (
-                                    <p className="text-xs text-primary/60">{workshop.gekoppeld_materiaal.type}</p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {workshop.template?.materiaal_omschrijving && (
-                        <p className="text-sm text-text-secondary">
-                            <span className="text-xs text-text-muted font-medium uppercase tracking-wide">Aanvullend: </span>
-                            {workshop.template.materiaal_omschrijving}
-                        </p>
-                    )}
-                </div>
-            )}
 
             {/* Voortgang */}
             {isBeheerder && (
@@ -215,7 +202,9 @@ export default function GeplandeWorkshopDetail() {
                             <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${workshop.ruimte_geregeld ? 'bg-success border-success' : 'border-overlay/30'}`}>
                                 {workshop.ruimte_geregeld && <CheckCircle2 size={14} className="text-white" />}
                             </div>
-                            <span className="text-sm text-text-primary">Ruimte geregeld</span>
+                            <span className="text-sm text-text-primary flex items-center gap-1.5">
+                                <DoorOpen size={14} className="text-text-muted" /> Ruimte geregeld
+                            </span>
                         </button>
                         <button
                             onClick={() => toggleCheckbox('in_jaarkalender')}
