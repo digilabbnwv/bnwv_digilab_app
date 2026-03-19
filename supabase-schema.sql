@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS geplande_workshops (
   webshop_product_url     TEXT,
   opmerkingen             TEXT,
   planning_batch_id       UUID,
+  materiaal_id            UUID REFERENCES materiaal(id) ON DELETE SET NULL,
   aangemaakt_door         UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
 );

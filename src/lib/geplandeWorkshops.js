@@ -56,9 +56,8 @@ export async function maakGeplandeWorkshop(workshop) {
         .from('geplande_workshops')
         .insert([workshop])
         .select()
-        .single()
     if (error) throw error
-    return data
+    return data?.[0]
 }
 
 // ── Bijwerken ───────────────────────────────────────────────────
@@ -67,7 +66,7 @@ const GEPLANDE_UPDATE_VELDEN = [
     'titel', 'datum', 'start_tijd', 'eind_tijd', 'locatie',
     'doelgroep', 'max_deelnemers', 'kosten', 'status',
     'uitvoerder_id', 'ruimte_geregeld', 'in_jaarkalender',
-    'in_webshop', 'webshop_product_url', 'opmerkingen',
+    'in_webshop', 'webshop_product_url', 'opmerkingen', 'materiaal_id',
 ]
 
 export async function updateGeplandeWorkshop(id, updates) {
@@ -81,9 +80,8 @@ export async function updateGeplandeWorkshop(id, updates) {
         .update(safe)
         .eq('id', id)
         .select()
-        .single()
     if (error) throw error
-    return data
+    return data?.[0]
 }
 
 // ── Verwijderen ─────────────────────────────────────────────────

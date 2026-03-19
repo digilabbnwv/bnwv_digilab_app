@@ -176,9 +176,8 @@ export async function addMateriaal(item) {
         .from('materiaal')
         .insert([{ ...item, qr_code, status: 'beschikbaar' }])
         .select()
-        .single()
     if (error) throw error
-    return data
+    return data?.[0]
 }
 
 export async function updateMateriaal(id, updates) {

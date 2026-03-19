@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getAlleWorkshopTemplates } from '../lib/workshops'
+import { getAllMateriaal } from '../lib/materiaal'
 import { maakGeplandeWorkshop } from '../lib/geplandeWorkshops'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { ArrowLeft, Save, BookOpen, CalendarDays } from 'lucide-react'
+import { ArrowLeft, Save, BookOpen, CalendarDays, Package } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet']
 
@@ -13,6 +14,7 @@ export default function WorkshopInplannen() {
     const [searchParams] = useSearchParams()
     const { medewerker } = useAuth()
     const [templates, setTemplates] = useState([])
+    const [allMateriaal, setAllMateriaal] = useState([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
@@ -25,30 +27,60 @@ export default function WorkshopInplannen() {
         doelgroep: '',
         max_deelnemers: '',
         kosten: '',
+        materiaal_id: '',
         opmerkingen: '',
     })
 
     useEffect(() => {
-        getAlleWorkshopTemplates()
-            .then(setTemplates)
+        Promise.all([
+            getAlleWorkshopTemplates(),
+            getAllMateriaal(),
+        ]).then(([tmplData, matData]) => {
+            setTemplates(tmplData)
+            setAllMateriaal(matData)
+            // Auto-vul als template via URL meegegeven is
+            const urlTemplateId = searchParams.get('template')
+            if (urlTemplateId) {
+                const tmpl = tmplData.find(t => t.id === urlTemplateId)
+                if (tmpl) {
+                    const mat = (tmpl.materiaal_ids || [])
+                        .map(id => matData.find(m => m.id === id))
+                        .filter(Boolean)
+                    setForm(f => ({
+                        ...f,
+                        doelgroep: tmpl.doelgroep || f.doelgroep,
+                        max_deelnemers: tmpl.max_deelnemers || f.max_deelnemers,
+                        kosten: tmpl.standaard_kosten ?? f.kosten,
+                        start_tijd: tmpl.titel?.includes('VibeLab') ? '13:00' : f.start_tijd,
+                        eind_tijd: tmpl.titel?.includes('VibeLab') ? '14:30' : f.eind_tijd,
+                        materiaal_id: mat.length === 1 ? mat[0].id : '',
+                    }))
+                }
+            }
+        })
             .catch(console.error)
             .finally(() => setLoading(false))
-    }, [])
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Wanneer template wijzigt, vul defaults in
     const geselecteerdeTemplate = templates.find(t => t.id === form.template_id)
+    const gekoppeldMateriaal = (geselecteerdeTemplate?.materiaal_ids || [])
+        .map(id => allMateriaal.find(m => m.id === id))
+        .filter(Boolean)
 
     function selecteerTemplate(templateId) {
         const tmpl = templates.find(t => t.id === templateId)
+        const mat = (tmpl?.materiaal_ids || [])
+            .map(id => allMateriaal.find(m => m.id === id))
+            .filter(Boolean)
         setForm(f => ({
             ...f,
             template_id: templateId,
             doelgroep: tmpl?.doelgroep || f.doelgroep,
             max_deelnemers: tmpl?.max_deelnemers || f.max_deelnemers,
             kosten: tmpl?.standaard_kosten ?? f.kosten,
-            // AI VibeLab heeft andere tijden
             start_tijd: tmpl?.titel?.includes('VibeLab') ? '13:00' : f.start_tijd,
             eind_tijd: tmpl?.titel?.includes('VibeLab') ? '14:30' : f.eind_tijd,
+            materiaal_id: mat.length === 1 ? mat[0].id : '',
         }))
     }
 
@@ -70,6 +102,7 @@ export default function WorkshopInplannen() {
                 doelgroep: form.doelgroep || tmpl?.doelgroep || null,
                 max_deelnemers: parseInt(form.max_deelnemers) || tmpl?.max_deelnemers || 10,
                 kosten: form.kosten === '' ? null : parseFloat(form.kosten),
+                materiaal_id: form.materiaal_id || null,
                 status: 'concept',
                 ruimte_geregeld: false,
                 in_jaarkalender: false,
@@ -122,9 +155,56 @@ export default function WorkshopInplannen() {
                             ))}
                         </select>
                     </div>
+
+                    {/* Materiaal uit database */}
+                    {geselecteerdeTemplate && gekoppeldMateriaal.length > 0 && (
+                        <div>
+                            <label className="label flex items-center gap-1.5">
+                                <Package size={13} /> Materiaal
+                            </label>
+                            {gekoppeldMateriaal.length === 1 ? (
+                                <div className="bg-primary/10 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                                    <Package size={14} className="text-primary flex-shrink-0" />
+                                    <span className="text-sm font-medium text-primary">{gekoppeldMateriaal[0].naam}</span>
+                                    <span className="text-xs text-primary/60 ml-auto">Automatisch geselecteerd</span>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {gekoppeldMateriaal.map(mat => (
+                                        <label
+                                            key={mat.id}
+                                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                                form.materiaal_id === mat.id
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-overlay/20 bg-bg-surface hover:border-primary/40'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="materiaal_id"
+                                                value={mat.id}
+                                                checked={form.materiaal_id === mat.id}
+                                                onChange={() => update('materiaal_id', mat.id)}
+                                                className="accent-primary"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-medium text-text-primary">{mat.naam}</p>
+                                                {mat.type && <p className="text-xs text-text-muted">{mat.type}</p>}
+                                            </div>
+                                        </label>
+                                    ))}
+                                    {!form.materiaal_id && (
+                                        <p className="text-xs text-amber-400 mt-1">Selecteer het materiaal dat je wilt gebruiken</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Aanvullend materiaal (vrije tekst) */}
                     {geselecteerdeTemplate?.materiaal_omschrijving && (
                         <div className="bg-bg-app rounded-lg p-3 text-sm">
-                            <p className="text-text-muted text-xs mb-1">Benodigd materiaal</p>
+                            <p className="text-text-muted text-xs mb-1">Aanvullend materiaal</p>
                             <p className="text-text-primary flex items-center gap-1.5">
                                 <BookOpen size={14} className="text-primary flex-shrink-0" />
                                 {geselecteerdeTemplate.materiaal_omschrijving}

@@ -88,13 +88,13 @@ export async function maakReservering({ materiaalId, medewerkerId, vanDatum, tot
             aangemaakt_op: new Date().toISOString(),
         }])
         .select('*, materiaal(id, naam, type, qr_code), medewerker:medewerkers(id, naam)')
-        .single()
     if (error) throw error
+    const reservering = data?.[0]
 
     // Sync met agenda op de achtergrond (niet wachten op resultaat)
-    syncAgendaAanmaken(data).catch(err => console.error('[maakReservering] Agenda sync fout:', err))
+    syncAgendaAanmaken(reservering).catch(err => console.error('[maakReservering] Agenda sync fout:', err))
 
-    return data
+    return reservering
 }
 
 // ── Annuleren ───────────────────────────────────────────────────
@@ -108,12 +108,12 @@ export async function annuleerReservering(reserveringId, medewerkerId) {
         .eq('id', reserveringId)
         .eq('medewerker_id', medewerkerId)
         .select('*, materiaal(id, naam, type, qr_code), medewerker:medewerkers(id, naam)')
-        .single()
     if (error) throw error
+    const reservering = data?.[0]
 
     // Sync annulering met agenda op de achtergrond
-    if (data) {
-        syncAgendaAnnuleren(data).catch(err => console.error('[annuleerReservering] Agenda sync fout:', err))
+    if (reservering) {
+        syncAgendaAnnuleren(reservering).catch(err => console.error('[annuleerReservering] Agenda sync fout:', err))
     }
 }
 

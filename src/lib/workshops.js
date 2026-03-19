@@ -59,9 +59,8 @@ export async function maakWorkshopTemplate(template) {
         .from('workshop_templates')
         .insert([template])
         .select()
-        .single()
     if (error) throw error
-    return data
+    return data?.[0]
 }
 
 const TEMPLATE_UPDATE_VELDEN = [
@@ -83,9 +82,8 @@ export async function updateWorkshopTemplate(id, updates) {
         .update(safe)
         .eq('id', id)
         .select()
-        .single()
     if (error) throw error
-    return data
+    return data?.[0]
 }
 
 export async function verwijderWorkshopTemplate(id) {
