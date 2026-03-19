@@ -9,6 +9,13 @@ const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
 export const WORKSHOP_STATUSSEN = ['concept', 'gepubliceerd', 'geannuleerd']
 
+// ── Helpers ─────────────────────────────────────────────────────
+
+function vandaagStr() {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Ophalen ─────────────────────────────────────────────────────
 
 export async function getAlleGeplandeWorkshops() {
@@ -45,6 +52,25 @@ export async function getGeplandeWorkshopsVoorPeriode(vanDatum, totDatum) {
         .order('datum')
     if (error) throw error
     return data
+}
+
+/**
+ * Geeft aankomende geplande workshops die dit materiaalitem nodig hebben.
+ * Gebruikt voor de conflictwaarschuwing op de itempagina.
+ */
+export async function getGeplandeWorkshopsVoorMateriaal(materiaalId) {
+    if (MOCK) return []
+
+    const { data, error } = await supabase
+        .from('geplande_workshops')
+        .select('id, titel, datum, start_tijd, locatie, status, uitvoerder:medewerkers!uitvoerder_id(naam)')
+        .eq('materiaal_id', materiaalId)
+        .neq('status', 'geannuleerd')
+        .gte('datum', vandaagStr())
+        .order('datum')
+        .limit(3)
+    if (error) throw error
+    return data || []
 }
 
 // ── Aanmaken ────────────────────────────────────────────────────

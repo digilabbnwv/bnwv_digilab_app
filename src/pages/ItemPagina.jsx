@@ -5,6 +5,7 @@ import { getMateriaalaItem } from '../lib/materiaal'
 import { uitchecken, inchecken, overrule } from '../lib/materiaal'
 import { verifyPin } from '../lib/auth'
 import { getReserveringenVoorItem, getEersteActieveReservering, computeReserveringsContext } from '../lib/reserveringen'
+import { getGeplandeWorkshopsVoorMateriaal } from '../lib/geplandeWorkshops'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
@@ -28,6 +29,7 @@ export default function ItemPagina() {
     const [succes, setSucces] = useState('')
     const [reserveringen, setReserveringen] = useState([])
     const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
+    const [workshopConflicten, setWorkshopConflicten] = useState([])
 
     // Scan modus: als qrCode === 'scan', open camera
     const isScanModus = qrCode === 'scan'
@@ -38,9 +40,13 @@ export default function ItemPagina() {
         try {
             const data = await getMateriaalaItem(code)
             setItem(data)
-            // Laad ook reserveringen voor dit item
-            const res = await getReserveringenVoorItem(data.id)
+            // Laad reserveringen én geplande workshops voor dit item parallel
+            const [res, workshops] = await Promise.all([
+                getReserveringenVoorItem(data.id),
+                getGeplandeWorkshopsVoorMateriaal(data.id),
+            ])
             setReserveringen(res)
+            setWorkshopConflicten(workshops)
         } catch {
             setFout('Item niet gevonden voor deze QR-code.')
         } finally {
@@ -352,6 +358,33 @@ export default function ItemPagina() {
                         )
                     })()}
 
+                    {/* ── Workshop-conflictbanner ────────────────── */}
+                    {workshopConflicten.length > 0 && (() => {
+                        const eerst = workshopConflicten[0]
+                        const dagVerschil = Math.ceil((new Date(eerst.datum + 'T00:00:00') - new Date()) / 86400000)
+                        const isUrgent = dagVerschil <= 7
+                        const formatD = (d) => { const [j, m, dag] = d.split('-'); return `${dag}-${m}-${j}` }
+                        return (
+                            <div className={`rounded-xl p-4 mb-4 border flex items-start gap-3 ${isUrgent ? 'bg-error/10 border-error/30' : 'bg-amber-500/10 border-amber-500/40'}`}>
+                                <CalendarDays size={18} className={`flex-shrink-0 mt-0.5 ${isUrgent ? 'text-error' : 'text-amber-400'}`} />
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-sm font-semibold ${isUrgent ? 'text-error' : 'text-amber-400'}`}>
+                                        {isUrgent ? '⚠️ Binnenkort nodig voor workshop' : 'Gepland voor workshop'}
+                                    </p>
+                                    <p className={`text-xs mt-0.5 ${isUrgent ? 'text-error/80' : 'text-amber-400/80'}`}>
+                                        {eerst.titel} — {formatD(eerst.datum)} {eerst.start_tijd?.slice(0, 5)} · {eerst.locatie}
+                                        {eerst.uitvoerder?.naam && ` · ${eerst.uitvoerder.naam}`}
+                                    </p>
+                                    {workshopConflicten.length > 1 && (
+                                        <p className={`text-xs mt-0.5 ${isUrgent ? 'text-error/60' : 'text-amber-400/60'}`}>
+                                            + {workshopConflicten.length - 1} andere geplande workshop{workshopConflicten.length > 2 ? 's' : ''}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })()}
+
                     {/* Acties */}
                     <div className="grid grid-cols-2 gap-3 mb-4">
                         <button
@@ -450,18 +483,39 @@ export default function ItemPagina() {
                         )
 
                         // Scenario: ad_hoc_vrij
+                        const eersteWorkshop = workshopConflicten[0]
+                        const dagVerschil = eersteWorkshop
+                            ? Math.ceil((new Date(eersteWorkshop.datum + 'T00:00:00') - new Date()) / 86400000)
+                            : null
                         return (
-                            <div className="rounded-xl p-4 border border-overlay/10 bg-bg-hover space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <PackagePlus size={18} className="text-text-secondary" />
-                                    <p className="text-text-primary text-sm font-semibold">Geen reserveringen — vrij beschikbaar</p>
+                            <div className="space-y-3">
+                                {eersteWorkshop && (
+                                    <div className={`rounded-xl p-3 border flex items-start gap-2 ${dagVerschil <= 7 ? 'bg-error/10 border-error/30' : 'bg-amber-500/10 border-amber-500/40'}`}>
+                                        <CalendarDays size={15} className={`flex-shrink-0 mt-0.5 ${dagVerschil <= 7 ? 'text-error' : 'text-amber-400'}`} />
+                                        <div>
+                                            <p className={`text-xs font-semibold ${dagVerschil <= 7 ? 'text-error' : 'text-amber-400'}`}>
+                                                Gepland voor: {eersteWorkshop.titel}
+                                            </p>
+                                            <p className={`text-xs mt-0.5 ${dagVerschil <= 7 ? 'text-error/70' : 'text-amber-400/70'}`}>
+                                                {formatDatum(eersteWorkshop.datum)} · {eersteWorkshop.locatie}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="rounded-xl p-4 border border-overlay/10 bg-bg-hover space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <PackagePlus size={18} className="text-text-secondary" />
+                                        <p className="text-text-primary text-sm font-semibold">
+                                            {eersteWorkshop ? 'Geen reserveringen, wel workshop gepland' : 'Geen reserveringen — vrij beschikbaar'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
+                                        className="btn-primary w-full py-2.5 mt-2"
+                                    >
+                                        Meenemen
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
-                                    className="btn-primary w-full py-2.5 mt-2"
-                                >
-                                    Meenemen
-                                </button>
                             </div>
                         )
                     })()}
