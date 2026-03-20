@@ -7,6 +7,7 @@ const navItems = [
     { to: '/materiaal', icon: Package, label: 'Materiaal' },
     { to: '/reserveren', icon: CalendarCheck, label: 'Reserveren' },
     { to: '/kalender', icon: CalendarDays, label: 'Kalender' },
+    { to: '/workshops', icon: BookOpen, label: 'Workshops' },
     { to: '/profiel', icon: User, label: 'Profiel' },
 ]
 
