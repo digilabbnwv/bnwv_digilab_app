@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -6,8 +6,11 @@ import {
     maakReservering, annuleerReservering,
 } from '../lib/reserveringen'
 import { getAllMateriaal } from '../lib/materiaal'
+import { getGeplandeWorkshopsVoorPeriode } from '../lib/geplandeWorkshops'
+import { checkConflicten } from '../lib/beschikbaarheid'
 import { LaadIndicator } from '../components/UI'
 import Modal from '../components/Modal'
+import ConflictBanner, { BeschikbaarBanner } from '../components/ConflictBanner'
 import {
     ChevronLeft, ChevronRight, Plus, Calendar,
     Package, User, Trash2, Info,
@@ -88,6 +91,35 @@ export default function ReserverenPagina() {
     })
     const [nieuwLoading, setNieuwLoading] = useState(false)
     const [nieuwFout, setNieuwFout] = useState('')
+    const [conflicten, setConflicten] = useState(null) // null = nog niet gecheckt
+    const [conflictLoading, setConflictLoading] = useState(false)
+    const conflictTimer = useRef(null)
+
+    // Conflict check bij wijzigen materiaal/datum
+    useEffect(() => {
+        if (conflictTimer.current) clearTimeout(conflictTimer.current)
+        if (!nieuwForm.materiaalId || !nieuwForm.vanDatum || !nieuwForm.totDatum) {
+            setConflicten(null)
+            return
+        }
+        setConflictLoading(true)
+        conflictTimer.current = setTimeout(async () => {
+            try {
+                const result = await checkConflicten(nieuwForm.materiaalId, nieuwForm.vanDatum, nieuwForm.totDatum)
+                setConflicten(result)
+            } catch (err) {
+                console.error('Conflictcheck fout:', err)
+                setConflicten(null)
+            } finally {
+                setConflictLoading(false)
+            }
+        }, 300)
+        return () => { if (conflictTimer.current) clearTimeout(conflictTimer.current) }
+    }, [nieuwForm.materiaalId, nieuwForm.vanDatum, nieuwForm.totDatum])
+
+    const heeftWorkshopConflict = conflicten?.conflicten?.some(c => c.type === 'workshop') || false
+
+    const [workshopsVoorMaand, setWorkshopsVoorMaand] = useState([])
 
     const laad = useCallback(async () => {
         setLoading(true)
@@ -104,6 +136,16 @@ export default function ReserverenPagina() {
 
     useEffect(() => { laad() }, [laad])
 
+    // Laad workshops voor de huidige maand (voor kalenderweergave)
+    useEffect(() => {
+        const vanDatum = `${jaar}-${String(maand + 1).padStart(2, '0')}-01`
+        const laatsteDag = new Date(jaar, maand + 1, 0).getDate()
+        const totDatum = `${jaar}-${String(maand + 1).padStart(2, '0')}-${String(laatsteDag).padStart(2, '0')}`
+        getGeplandeWorkshopsVoorPeriode(vanDatum, totDatum)
+            .then(ws => setWorkshopsVoorMaand(ws.filter(w => w.status !== 'geannuleerd' && (w.materiaal_ids?.length > 0))))
+            .catch(console.error)
+    }, [jaar, maand])
+
     // Open nieuw-reservering modal via URL param
     useEffect(() => {
         if (searchParams.get('nieuw') === 'true') {
@@ -117,13 +159,18 @@ export default function ReserverenPagina() {
     const aantalDagen = dagenInMaand(jaar, maand)
     const eersteOffset = eersteDagVanMaand(jaar, maand)
 
-    // Bouw een map: datum → lijst reserveringen
+    // Bouw een map: datum → lijst reserveringen + workshops
     const dagMap = {}
     reserveringen.forEach(r => {
         datumRange(r.van_datum, r.tot_datum).forEach(d => {
             if (!dagMap[d]) dagMap[d] = []
             dagMap[d].push(r)
         })
+    })
+    // Voeg workshops toe aan dagMap
+    workshopsVoorMaand.forEach(w => {
+        if (!dagMap[w.datum]) dagMap[w.datum] = []
+        dagMap[w.datum].push({ ...w, _isWorkshop: true })
     })
 
     // Reserveringen voor de gekozen dag of de hele maand
@@ -160,6 +207,7 @@ export default function ReserverenPagina() {
         if (!nieuwForm.materiaalId) return setNieuwFout('Kies een product')
         if (!nieuwForm.vanDatum || !nieuwForm.totDatum) return setNieuwFout('Kies van- en tot-datum')
         if (nieuwForm.vanDatum > nieuwForm.totDatum) return setNieuwFout('Van-datum moet vóór tot-datum liggen')
+        if (heeftWorkshopConflict) return setNieuwFout('Kan niet reserveren — er is een workshop gepland op deze datum')
         setNieuwLoading(true); setNieuwFout('')
         try {
             await maakReservering({
@@ -286,10 +334,14 @@ export default function ReserverenPagina() {
                                         {/* Gekleurde puntjes per reservering */}
                                         {heeftReserv && (
                                             <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
-                                                {dagRes.slice(0, 3).map(r => (
+                                                {dagRes.slice(0, 3).map((r, idx) => (
                                                     <div
-                                                        key={r.id}
-                                                        className={`w-1.5 h-1.5 rounded-full ${isGekozen ? 'bg-white/80' : kleurVoorItem(r.materiaal_id, alleItems)}`}
+                                                        key={r.id || `ws-${idx}`}
+                                                        className={`w-1.5 h-1.5 rounded-full ${
+                                                            isGekozen ? 'bg-white/80'
+                                                                : r._isWorkshop ? 'bg-error/70'
+                                                                    : kleurVoorItem(r.materiaal_id, alleItems)
+                                                        }`}
                                                     />
                                                 ))}
                                                 {dagRes.length > 3 && (
@@ -306,7 +358,7 @@ export default function ReserverenPagina() {
                     </div>
 
                     {/* Legenda */}
-                    {alleItems.length > 0 && reserveringen.length > 0 && (
+                    {(reserveringen.length > 0 || workshopsVoorMaand.length > 0) && (
                         <div className="flex flex-wrap gap-2 mb-4">
                             {[...new Set(reserveringen.map(r => r.materiaal_id))].map(id => {
                                 const item = alleItems.find(i => i.id === id)
@@ -318,6 +370,12 @@ export default function ReserverenPagina() {
                                     </div>
                                 )
                             })}
+                            {workshopsVoorMaand.length > 0 && (
+                                <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-error/70" />
+                                    Workshop
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -427,6 +485,25 @@ export default function ReserverenPagina() {
                             />
                         </div>
 
+                        {/* Beschikbaarheidscheck */}
+                        {nieuwForm.materiaalId && nieuwForm.vanDatum && nieuwForm.totDatum && (
+                            conflictLoading ? (
+                                <div className="flex items-center gap-2 text-text-muted text-sm py-2">
+                                    <div className="w-4 h-4 border-2 border-text-muted border-t-transparent rounded-full animate-spin" />
+                                    Beschikbaarheid controleren...
+                                </div>
+                            ) : conflicten ? (
+                                conflicten.beschikbaar ? (
+                                    <BeschikbaarBanner />
+                                ) : (
+                                    <ConflictBanner
+                                        conflicten={conflicten.conflicten}
+                                        mode={heeftWorkshopConflict ? 'block' : 'warn'}
+                                    />
+                                )
+                            ) : null
+                        )}
+
                         {nieuwFout && (
                             <div className="bg-error/10 border border-error/30 rounded-xl px-4 py-3 text-error text-sm">
                                 {nieuwFout}
@@ -436,7 +513,7 @@ export default function ReserverenPagina() {
                         <button
                             onClick={handleNieuwOpslaan}
                             className="btn-primary w-full flex items-center justify-center gap-2"
-                            disabled={nieuwLoading}
+                            disabled={nieuwLoading || heeftWorkshopConflict}
                         >
                             {nieuwLoading
                                 ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { getUitgechecktMateriaal, getMijnMateriaal, getAllMateriaal, uitchecken } from '../lib/materiaal'
 import { getOpenMeldingen } from '../lib/onderhoud'
 import { checkReserveringsContext, computeReserveringsContext, getReserveringenVoorItem } from '../lib/reserveringen'
+import { getGeplandeWorkshopsVoorMateriaal } from '../lib/geplandeWorkshops'
 import { verifyPin } from '../lib/auth'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
@@ -27,6 +28,7 @@ export default function Dashboard() {
     const [resContext, setResContext] = useState(null)
     const [resContextLoading, setResContextLoading] = useState(false)
     const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
+    const [workshopWaarschuwingen, setWorkshopWaarschuwingen] = useState([])
     const [deadlines, setDeadlines] = useState({}) // { materiaalId: 'YYYY-MM-DD' }
 
     useEffect(() => {
@@ -49,12 +51,15 @@ export default function Dashboard() {
             const deadlineMap = {}
             await Promise.all(m.map(async (item) => {
                 try {
-                    const res = await getReserveringenVoorItem(item.id)
-                    const ctx = computeReserveringsContext(res, medewerker.id)
+                    const [res, ws] = await Promise.all([
+                        getReserveringenVoorItem(item.id),
+                        getGeplandeWorkshopsVoorMateriaal(item.id),
+                    ])
+                    const ctx = computeReserveringsContext(res, medewerker.id, ws)
                     if (ctx.terugbrengDeadline) {
                         deadlineMap[item.id] = {
                             datum: ctx.terugbrengDeadline,
-                            naam: ctx.eerstvolgendeAnders?.medewerker?.naam,
+                            naam: ctx.eerstvolgendeAnders?.medewerker?.naam || ctx.eerstvolgendeWorkshop?.titel,
                         }
                     }
                 } catch { /* negeer fouten bij deadline berekening */ }
@@ -86,14 +91,21 @@ export default function Dashboard() {
         if (!gekozenId) return
         setResContextLoading(true)
         try {
-            const ctx = await checkReserveringsContext(gekozenId, medewerker.id)
+            const [ctx, workshops] = await Promise.all([
+                checkReserveringsContext(gekozenId, medewerker.id),
+                getGeplandeWorkshopsVoorMateriaal(gekozenId),
+            ])
             setResContext(ctx)
+            setWorkshopWaarschuwingen(workshops.filter(w => {
+                const dagVerschil = Math.ceil((new Date(w.datum + 'T00:00:00') - new Date()) / 86400000)
+                return dagVerschil <= 7
+            }))
             setGekoppeldeReservering(null)
             setMeeneemStap(2)
         } catch (err) {
             console.error(err)
-            // Bij fout direct door naar pin
             setResContext({ scenario: 'ad_hoc_vrij', eigenReservering: null, eerstvolgendeAnders: null, terugbrengDeadline: null })
+            setWorkshopWaarschuwingen([])
             setMeeneemStap(2)
         } finally {
             setResContextLoading(false)
@@ -401,6 +413,26 @@ export default function Dashboard() {
                                     >
                                         Ik begrijp het, meenemen
                                     </button>
+                                </div>
+                            )}
+
+                            {/* Workshop-waarschuwing (bij alle scenario's) */}
+                            {workshopWaarschuwingen.length > 0 && (
+                                <div className="rounded-xl p-4 border border-error/30 bg-error/10 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <CalendarDays size={18} className="text-error" />
+                                        <p className="text-error text-sm font-semibold">
+                                            Binnenkort nodig voor workshop
+                                        </p>
+                                    </div>
+                                    {workshopWaarschuwingen.map(w => (
+                                        <p key={w.id} className="text-error/80 text-xs">
+                                            {w.titel} — {formatDatum(w.datum)} {w.start_tijd?.slice(0, 5)} · {w.locatie}
+                                        </p>
+                                    ))}
+                                    <p className="text-error/60 text-xs">
+                                        Zorg dat het materiaal op tijd terug is voor de workshop.
+                                    </p>
                                 </div>
                             )}
                         </div>

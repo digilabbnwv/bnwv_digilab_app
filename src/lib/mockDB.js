@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 5
+const DB_VERSION = 7
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -197,10 +197,21 @@ export async function initMockDB() {
 
     // Sla referenties op voor gebruik in andere tabellen
     const spheroIndiErm = materiaalItems[0]
+    const spheroIndiNun = materiaalItems[1]
     const spheroBolt = materiaalItems[2]
     const classvrErm = materiaalItems[3]
-    const mbItErm = materiaalItems[13]
+    const classvrNun = materiaalItems[4]
+    const ozobotEvo = materiaalItems[5]
+    const ozobotBit = materiaalItems[6] // eslint-disable-line no-unused-vars
+    const legoSpike = materiaalItems[7]
     const beebot1 = materiaalItems[10]
+    const photon = materiaalItems[13]
+    const mbItErm = materiaalItems[14]
+    const mbItNun = materiaalItems[15]
+    const dpriErm = materiaalItems[16]
+    const dpriNun = materiaalItems[17]
+    const laserErm = materiaalItems[18]
+    const laserNun = materiaalItems[19]
 
     // Zet één item 'in gebruik' bij een medewerker (demo)
     spheroBolt.status = 'in_gebruik'
@@ -244,6 +255,21 @@ export async function initMockDB() {
         wt('Sphero Indi in de bieb', 'Sphero Indi 2 set', '4-8 jr'),
         wt('AI VibeLab', null, 'Volwassenen', 15, 90),
     ]
+
+    // Koppel materiaal_ids aan templates
+    workshopTemplates[0].materiaal_ids = [mbItErm.id, mbItNun.id]         // Micro:Bit – Aan de slag
+    workshopTemplates[1].materiaal_ids = [mbItErm.id, mbItNun.id]         // Micro:Bit – LEGO
+    workshopTemplates[2].materiaal_ids = [mbItErm.id, mbItNun.id]         // Micro:Bit – AI
+    workshopTemplates[3].materiaal_ids = [ozobotEvo.id]                   // OZOBOT Evo – Kleuren
+    workshopTemplates[4].materiaal_ids = [ozobotEvo.id]                   // OZOBOT Evo – Verdieping
+    workshopTemplates[5].materiaal_ids = [dpriErm.id, dpriNun.id]         // 3D Printen
+    workshopTemplates[6].materiaal_ids = [laserErm.id, laserNun.id]       // Lasersnijden
+    workshopTemplates[7].materiaal_ids = [laserErm.id, laserNun.id]       // Vinylsnijden
+    workshopTemplates[8].materiaal_ids = [classvrErm.id, classvrNun.id]   // Virtual Reality
+    workshopTemplates[9].materiaal_ids = [legoSpike.id]                   // LEGO Spike
+    workshopTemplates[10].materiaal_ids = [spheroIndiErm.id, photon.id, ozobotEvo.id, spheroBolt.id] // Robotcarousel
+    workshopTemplates[12].materiaal_ids = [spheroBolt.id, classvrErm.id, ozobotEvo.id, spheroIndiErm.id] // Open Digilab
+    workshopTemplates[14].materiaal_ids = [spheroIndiErm.id, spheroIndiNun.id] // Sphero Indi
 
     const newDB = {
         version: DB_VERSION,
@@ -306,6 +332,7 @@ export async function initMockDB() {
                 datum: '2026-03-25', start_tijd: '15:30', eind_tijd: '16:30',
                 locatie: 'Nunspeet', doelgroep: '8-12 jr', max_deelnemers: 10,
                 kosten: null, status: 'gepubliceerd', uitvoerder_id: null,
+                materiaal_ids: [mbItErm.id, mbItNun.id],
                 ruimte_geregeld: true, in_jaarkalender: true, in_webshop: true,
                 webshop_product_url: null, opmerkingen: null,
                 planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
@@ -316,6 +343,7 @@ export async function initMockDB() {
                 datum: '2026-03-26', start_tijd: '15:30', eind_tijd: '16:30',
                 locatie: 'Ermelo', doelgroep: '8-12 jr', max_deelnemers: 10,
                 kosten: null, status: 'gepubliceerd', uitvoerder_id: null,
+                materiaal_ids: [ozobotEvo.id],
                 ruimte_geregeld: true, in_jaarkalender: true, in_webshop: false,
                 webshop_product_url: null, opmerkingen: null,
                 planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
@@ -326,6 +354,7 @@ export async function initMockDB() {
                 datum: '2026-03-27', start_tijd: '13:00', eind_tijd: '14:30',
                 locatie: 'Ermelo', doelgroep: 'Volwassenen', max_deelnemers: 15,
                 kosten: null, status: 'concept', uitvoerder_id: null,
+                materiaal_ids: [],
                 ruimte_geregeld: false, in_jaarkalender: false, in_webshop: false,
                 webshop_product_url: null, opmerkingen: 'Laatste vrijdag van de maand',
                 planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
@@ -336,6 +365,7 @@ export async function initMockDB() {
                 datum: '2026-04-01', start_tijd: '15:30', eind_tijd: '16:30',
                 locatie: 'Nunspeet', doelgroep: '12+', max_deelnemers: 6,
                 kosten: null, status: 'concept', uitvoerder_id: null,
+                materiaal_ids: [dpriNun.id],
                 ruimte_geregeld: false, in_jaarkalender: false, in_webshop: false,
                 webshop_product_url: null, opmerkingen: null,
                 planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
@@ -346,6 +376,7 @@ export async function initMockDB() {
                 datum: '2026-04-02', start_tijd: '15:30', eind_tijd: '16:30',
                 locatie: 'Ermelo', doelgroep: '8-12 jr', max_deelnemers: 16,
                 kosten: null, status: 'concept', uitvoerder_id: null,
+                materiaal_ids: [classvrErm.id],
                 ruimte_geregeld: false, in_jaarkalender: false, in_webshop: false,
                 webshop_product_url: null, opmerkingen: null,
                 planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
@@ -779,10 +810,16 @@ export function mockVerwijderWorkshopTemplate(id) {
 function enrichGeplandeWorkshop(gw, db) {
     const tmpl = db.workshop_templates?.find(t => t.id === gw.template_id)
     const uitvoerder = gw.uitvoerder_id ? db.medewerkers.find(m => m.id === gw.uitvoerder_id) : null
+    // Resolve materiaal_ids naar objecten
+    const gekoppeld_materiaal = (gw.materiaal_ids || [])
+        .map(mid => db.materiaal.find(m => m.id === mid))
+        .filter(Boolean)
+        .map(m => ({ id: m.id, naam: m.naam, type: m.type }))
     return {
         ...gw,
-        template: tmpl ? { id: tmpl.id, titel: tmpl.titel, materiaal_omschrijving: tmpl.materiaal_omschrijving } : null,
+        template: tmpl ? { id: tmpl.id, titel: tmpl.titel, materiaal_omschrijving: tmpl.materiaal_omschrijving, doelgroep: tmpl.doelgroep, max_deelnemers: tmpl.max_deelnemers, standaard_kosten: tmpl.standaard_kosten, standaard_duur_minuten: tmpl.standaard_duur_minuten } : null,
         uitvoerder: uitvoerder ? { id: uitvoerder.id, naam: uitvoerder.naam } : null,
+        gekoppeld_materiaal,
     }
 }
 
@@ -839,5 +876,19 @@ export function mockVerwijderGeplandeWorkshop(id) {
     if (!db.geplande_workshops) return
     db.geplande_workshops = db.geplande_workshops.filter(w => w.id !== id)
     saveDB(db)
+}
+
+export function mockGetGeplandeWorkshopsVoorMateriaal(materiaalId) {
+    const db = getDB()
+    if (!db.geplande_workshops) return []
+    const vandaag = new Date().toISOString().slice(0, 10)
+    return db.geplande_workshops
+        .filter(gw =>
+            gw.status !== 'geannuleerd' &&
+            gw.datum >= vandaag &&
+            (gw.materiaal_ids || []).includes(materiaalId)
+        )
+        .map(gw => enrichGeplandeWorkshop(gw, db))
+        .sort((a, b) => a.datum.localeCompare(b.datum))
 }
 

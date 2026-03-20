@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS geplande_workshops (
   webshop_product_url     TEXT,
   opmerkingen             TEXT,
   planning_batch_id       UUID,
-  materiaal_id            UUID REFERENCES materiaal(id) ON DELETE SET NULL,
+  materiaal_ids           UUID[],         -- array van gekoppelde materialen
   aangemaakt_door         UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
 );
@@ -133,6 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_reserveringen_datum ON reserveringen(van_datum, t
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_datum ON geplande_workshops(datum);
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_status ON geplande_workshops(status);
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_locatie ON geplande_workshops(locatie);
+CREATE INDEX IF NOT EXISTS idx_geplande_workshops_materiaal ON geplande_workshops USING GIN (materiaal_ids);
 
 -- ============================================================
 -- Row Level Security (RLS) — Eenvoudig: alle medewerkers mogen alles

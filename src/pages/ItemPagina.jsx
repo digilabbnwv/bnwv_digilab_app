@@ -9,6 +9,7 @@ import { getGeplandeWorkshopsVoorMateriaal } from '../lib/geplandeWorkshops'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
+import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
 import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
@@ -315,6 +316,14 @@ export default function ItemPagina() {
                         )}
                     </div>
 
+                    {/* ── Beschikbaarheid tijdlijn ──────────────── */}
+                    {item && (
+                        <div className="card p-4 mb-4">
+                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Beschikbaarheid komende 14 dagen</p>
+                            <BeschikbaarheidIndicator materiaalId={item.id} aantalDagen={14} />
+                        </div>
+                    )}
+
                     {/* ── Reserveringsbanner ────────────────────── */}
                     {(() => {
                         const eersteRes = getEersteActieveReservering(reserveringen)
@@ -429,7 +438,7 @@ export default function ItemPagina() {
                     )}
 
                     {(() => {
-                        const ctx = computeReserveringsContext(reserveringen, medewerker.id)
+                        const ctx = computeReserveringsContext(reserveringen, medewerker.id, workshopConflicten)
 
                         if (ctx.scenario === 'eigen_reservering') return (
                             <div className="rounded-xl p-4 border border-success/30 bg-success/10 space-y-2">

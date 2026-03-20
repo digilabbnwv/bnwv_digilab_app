@@ -54,10 +54,10 @@ export default function PlanningGenereren() {
         setSaving(true)
         try {
             for (const workshop of teOpslaan) {
-                // Auto-assign eerste gekoppeld materiaal van de template
+                // Auto-assign gekoppeld materiaal van de template
                 const tmpl = templates.find(t => t.id === workshop.template_id)
-                const materiaal_id = tmpl?.materiaal_ids?.[0] || null
-                await maakGeplandeWorkshop({ ...workshop, materiaal_id })
+                const materiaal_ids = tmpl?.materiaal_ids || []
+                await maakGeplandeWorkshop({ ...workshop, materiaal_ids })
             }
             setStap(3)
         } catch (err) {

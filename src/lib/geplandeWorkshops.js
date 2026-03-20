@@ -3,6 +3,7 @@ import {
     mockGetAlleGeplandeWorkshops, mockGetGeplandeWorkshop,
     mockMaakGeplandeWorkshop, mockUpdateGeplandeWorkshop,
     mockVerwijderGeplandeWorkshop, mockGetGeplandeWorkshopsVoorPeriode,
+    mockGetGeplandeWorkshopsVoorMateriaal,
 } from './mockDB'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -34,10 +35,22 @@ export async function getGeplandeWorkshop(id) {
 
     const { data, error } = await supabase
         .from('geplande_workshops')
-        .select('*, template:workshop_templates(id, titel, materiaal_omschrijving, doelgroep, max_deelnemers, standaard_kosten, standaard_duur_minuten), uitvoerder:medewerkers!uitvoerder_id(id, naam), gekoppeld_materiaal:materiaal!materiaal_id(id, naam, type)')
+        .select('*, template:workshop_templates(id, titel, materiaal_omschrijving, doelgroep, max_deelnemers, standaard_kosten, standaard_duur_minuten), uitvoerder:medewerkers!uitvoerder_id(id, naam)')
         .eq('id', id)
         .single()
     if (error) throw error
+
+    // Resolve materiaal_ids naar objecten (kan niet via FK join met array)
+    if (data?.materiaal_ids?.length) {
+        const { data: materialen } = await supabase
+            .from('materiaal')
+            .select('id, naam, type')
+            .in('id', data.materiaal_ids)
+        data.gekoppeld_materiaal = materialen || []
+    } else {
+        data.gekoppeld_materiaal = []
+    }
+
     return data
 }
 
@@ -59,16 +72,15 @@ export async function getGeplandeWorkshopsVoorPeriode(vanDatum, totDatum) {
  * Gebruikt voor de conflictwaarschuwing op de itempagina.
  */
 export async function getGeplandeWorkshopsVoorMateriaal(materiaalId) {
-    if (MOCK) return []
+    if (MOCK) return mockGetGeplandeWorkshopsVoorMateriaal(materiaalId)
 
     const { data, error } = await supabase
         .from('geplande_workshops')
-        .select('id, titel, datum, start_tijd, locatie, status, uitvoerder:medewerkers!uitvoerder_id(naam)')
-        .eq('materiaal_id', materiaalId)
+        .select('id, titel, datum, start_tijd, eind_tijd, locatie, status, uitvoerder:medewerkers!uitvoerder_id(naam)')
+        .contains('materiaal_ids', [materiaalId])
         .neq('status', 'geannuleerd')
         .gte('datum', vandaagStr())
         .order('datum')
-        .limit(3)
     if (error) throw error
     return data || []
 }
@@ -92,7 +104,7 @@ const GEPLANDE_UPDATE_VELDEN = [
     'titel', 'datum', 'start_tijd', 'eind_tijd', 'locatie',
     'doelgroep', 'max_deelnemers', 'kosten', 'status',
     'uitvoerder_id', 'ruimte_geregeld', 'in_jaarkalender',
-    'in_webshop', 'webshop_product_url', 'opmerkingen', 'materiaal_id',
+    'in_webshop', 'webshop_product_url', 'opmerkingen', 'materiaal_ids',
 ]
 
 export async function updateGeplandeWorkshop(id, updates) {

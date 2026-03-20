@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
+import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
 import { Search, Package, Plus, MapPin, User, AlertTriangle } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
@@ -149,6 +150,9 @@ export default function MateriaalOverzicht() {
                                             : <><MapPin size={11} /> {item.huidige_locatie || item.standaard_locatie || '—'}</>
                                         }
                                     </p>
+                                    <div className="mt-1">
+                                        <BeschikbaarheidIndicator materiaalId={item.id} aantalDagen={7} compact />
+                                    </div>
                                 </div>
                                 <StatusBadge status={item.status} />
                             </Link>

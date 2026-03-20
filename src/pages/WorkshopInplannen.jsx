@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getAlleWorkshopTemplates } from '../lib/workshops'
 import { getAllMateriaal } from '../lib/materiaal'
 import { maakGeplandeWorkshop } from '../lib/geplandeWorkshops'
+import { checkConflicten } from '../lib/beschikbaarheid'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { ArrowLeft, Save, BookOpen, CalendarDays, Package } from 'lucide-react'
+import ConflictBanner from '../components/ConflictBanner'
+import { ArrowLeft, Save, BookOpen, CalendarDays, Package, Check, AlertTriangle } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet']
 
@@ -17,6 +19,8 @@ export default function WorkshopInplannen() {
     const [allMateriaal, setAllMateriaal] = useState([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [materiaalConflicten, setMateriaalConflicten] = useState({}) // { [materiaalId]: { beschikbaar, conflicten } }
+    const conflictTimer = useRef(null)
 
     const [form, setForm] = useState({
         template_id: searchParams.get('template') || '',
@@ -27,7 +31,7 @@ export default function WorkshopInplannen() {
         doelgroep: '',
         max_deelnemers: '',
         kosten: '',
-        materiaal_id: '',
+        materiaal_ids: [],
         opmerkingen: '',
     })
 
@@ -43,9 +47,6 @@ export default function WorkshopInplannen() {
             if (urlTemplateId) {
                 const tmpl = tmplData.find(t => t.id === urlTemplateId)
                 if (tmpl) {
-                    const mat = (tmpl.materiaal_ids || [])
-                        .map(id => matData.find(m => m.id === id))
-                        .filter(Boolean)
                     setForm(f => ({
                         ...f,
                         doelgroep: tmpl.doelgroep || f.doelgroep,
@@ -53,7 +54,7 @@ export default function WorkshopInplannen() {
                         kosten: tmpl.standaard_kosten ?? f.kosten,
                         start_tijd: tmpl.titel?.includes('VibeLab') ? '13:00' : f.start_tijd,
                         eind_tijd: tmpl.titel?.includes('VibeLab') ? '14:30' : f.eind_tijd,
-                        materiaal_id: mat.length === 1 ? mat[0].id : '',
+                        materiaal_ids: tmpl.materiaal_ids || [],
                     }))
                 }
             }
@@ -62,6 +63,27 @@ export default function WorkshopInplannen() {
             .finally(() => setLoading(false))
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Conflict check per materiaal bij wijzigen datum/materiaal_ids
+    useEffect(() => {
+        if (conflictTimer.current) clearTimeout(conflictTimer.current)
+        if (!form.datum || form.materiaal_ids.length === 0) {
+            setMateriaalConflicten({})
+            return
+        }
+        conflictTimer.current = setTimeout(async () => {
+            const resultaten = {}
+            await Promise.all(form.materiaal_ids.map(async (matId) => {
+                try {
+                    resultaten[matId] = await checkConflicten(matId, form.datum, form.datum)
+                } catch (err) {
+                    console.error('Conflictcheck fout:', err)
+                }
+            }))
+            setMateriaalConflicten(resultaten)
+        }, 300)
+        return () => { if (conflictTimer.current) clearTimeout(conflictTimer.current) }
+    }, [form.datum, form.materiaal_ids])
+
     const geselecteerdeTemplate = templates.find(t => t.id === form.template_id)
     const gekoppeldMateriaal = (geselecteerdeTemplate?.materiaal_ids || [])
         .map(id => allMateriaal.find(m => m.id === id))
@@ -69,9 +91,6 @@ export default function WorkshopInplannen() {
 
     function selecteerTemplate(templateId) {
         const tmpl = templates.find(t => t.id === templateId)
-        const mat = (tmpl?.materiaal_ids || [])
-            .map(id => allMateriaal.find(m => m.id === id))
-            .filter(Boolean)
         setForm(f => ({
             ...f,
             template_id: templateId,
@@ -80,7 +99,16 @@ export default function WorkshopInplannen() {
             kosten: tmpl?.standaard_kosten ?? f.kosten,
             start_tijd: tmpl?.titel?.includes('VibeLab') ? '13:00' : f.start_tijd,
             eind_tijd: tmpl?.titel?.includes('VibeLab') ? '14:30' : f.eind_tijd,
-            materiaal_id: mat.length === 1 ? mat[0].id : '',
+            materiaal_ids: tmpl?.materiaal_ids || [],
+        }))
+    }
+
+    function toggleMateriaal(matId) {
+        setForm(f => ({
+            ...f,
+            materiaal_ids: f.materiaal_ids.includes(matId)
+                ? f.materiaal_ids.filter(id => id !== matId)
+                : [...f.materiaal_ids, matId],
         }))
     }
 
@@ -102,7 +130,7 @@ export default function WorkshopInplannen() {
                 doelgroep: form.doelgroep || tmpl?.doelgroep || null,
                 max_deelnemers: parseInt(form.max_deelnemers) || tmpl?.max_deelnemers || 10,
                 kosten: form.kosten === '' ? null : parseFloat(form.kosten),
-                materiaal_id: form.materiaal_id || null,
+                materiaal_ids: form.materiaal_ids.length > 0 ? form.materiaal_ids : [],
                 status: 'concept',
                 ruimte_geregeld: false,
                 in_jaarkalender: false,
@@ -162,42 +190,52 @@ export default function WorkshopInplannen() {
                             <label className="label flex items-center gap-1.5">
                                 <Package size={13} /> Materiaal
                             </label>
-                            {gekoppeldMateriaal.length === 1 ? (
-                                <div className="bg-primary/10 rounded-lg px-3 py-2.5 flex items-center gap-2">
-                                    <Package size={14} className="text-primary flex-shrink-0" />
-                                    <span className="text-sm font-medium text-primary">{gekoppeldMateriaal[0].naam}</span>
-                                    <span className="text-xs text-primary/60 ml-auto">Automatisch geselecteerd</span>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {gekoppeldMateriaal.map(mat => (
+                            <div className="space-y-2">
+                                {gekoppeldMateriaal.map(mat => {
+                                    const isSelected = form.materiaal_ids.includes(mat.id)
+                                    const conflict = materiaalConflicten[mat.id]
+                                    const heeftConflict = isSelected && conflict && !conflict.beschikbaar
+                                    return (
                                         <label
                                             key={mat.id}
                                             className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                                                form.materiaal_id === mat.id
-                                                    ? 'border-primary bg-primary/5'
+                                                isSelected
+                                                    ? heeftConflict ? 'border-amber-500 bg-amber-500/5' : 'border-primary bg-primary/5'
                                                     : 'border-overlay/20 bg-bg-surface hover:border-primary/40'
                                             }`}
                                         >
                                             <input
-                                                type="radio"
-                                                name="materiaal_id"
-                                                value={mat.id}
-                                                checked={form.materiaal_id === mat.id}
-                                                onChange={() => update('materiaal_id', mat.id)}
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleMateriaal(mat.id)}
                                                 className="accent-primary"
                                             />
-                                            <div>
+                                            <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-text-primary">{mat.naam}</p>
                                                 {mat.type && <p className="text-xs text-text-muted">{mat.type}</p>}
                                             </div>
+                                            {isSelected && form.datum && conflict && (
+                                                conflict.beschikbaar ? (
+                                                    <Check size={16} className="text-success flex-shrink-0" />
+                                                ) : (
+                                                    <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />
+                                                )
+                                            )}
                                         </label>
-                                    ))}
-                                    {!form.materiaal_id && (
-                                        <p className="text-xs text-amber-400 mt-1">Selecteer het materiaal dat je wilt gebruiken</p>
-                                    )}
-                                </div>
-                            )}
+                                    )
+                                })}
+                                {/* Toon conflictdetails als er waarschuwingen zijn */}
+                                {form.datum && Object.entries(materiaalConflicten)
+                                    .filter(([matId, c]) => form.materiaal_ids.includes(matId) && !c.beschikbaar)
+                                    .map(([matId, c]) => (
+                                        <ConflictBanner
+                                            key={matId}
+                                            conflicten={c.conflicten}
+                                            mode="warn"
+                                        />
+                                    ))
+                                }
+                            </div>
                         </div>
                     )}
 

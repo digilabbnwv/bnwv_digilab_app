@@ -142,13 +142,14 @@ export function getEersteActieveReservering(reserveringen) {
 
 /**
  * Bepaalt de reserveringscontext bij het uitchecken van een item.
- * Puur/synchroon — werkt op een array reserveringen.
+ * Puur/synchroon — werkt op een array reserveringen + optioneel workshops.
  *
  * @param {Array} reserveringen - Alle actieve reserveringen voor het item
  * @param {string} medewerkerId - ID van de huidige medewerker
- * @returns {{ eigenReservering, eerstvolgendeAnders, terugbrengDeadline, scenario }}
+ * @param {Array} [workshops=[]] - Geplande workshops die dit materiaal nodig hebben
+ * @returns {{ eigenReservering, eerstvolgendeAnders, eerstvolgendeWorkshop, terugbrengDeadline, scenario }}
  */
-export function computeReserveringsContext(reserveringen, medewerkerId) {
+export function computeReserveringsContext(reserveringen, medewerkerId, workshops = []) {
     // Lokale datum als YYYY-MM-DD (zonder UTC-conversie)
     const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -181,15 +182,29 @@ export function computeReserveringsContext(reserveringen, medewerkerId) {
         })
         .sort((a, b) => a.van_datum.localeCompare(b.van_datum))[0] || null
 
-    // 3. Terugbrengdeadline: dag vóór de eerstvolgende reservering van ander
+    // 2b. Eerstvolgende workshop
+    const eerstvolgendeWorkshop = workshops
+        .filter(w => w.status !== 'geannuleerd' && w.datum >= vandaag)
+        .sort((a, b) => a.datum.localeCompare(b.datum))[0] || null
+
+    // 3. Terugbrengdeadline: vroegste van (dag vóór reservering ander) en (dag vóór workshop)
     let terugbrengDeadline = null
+
+    function dagVoor(datumStr) {
+        const [j, m, d] = datumStr.split('-').map(Number)
+        const dt = new Date(j, m - 1, d)
+        dt.setDate(dt.getDate() - 1)
+        const result = localISO(dt)
+        return result < vandaag ? vandaag : result
+    }
+
     if (eerstvolgendeAnders) {
-        const [j, m, d] = eerstvolgendeAnders.van_datum.split('-').map(Number)
-        const vanDatum = new Date(j, m - 1, d)
-        vanDatum.setDate(vanDatum.getDate() - 1)
-        terugbrengDeadline = localISO(vanDatum)
-        if (terugbrengDeadline < vandaag) {
-            terugbrengDeadline = vandaag
+        terugbrengDeadline = dagVoor(eerstvolgendeAnders.van_datum)
+    }
+    if (eerstvolgendeWorkshop) {
+        const workshopDeadline = dagVoor(eerstvolgendeWorkshop.datum)
+        if (!terugbrengDeadline || workshopDeadline < terugbrengDeadline) {
+            terugbrengDeadline = workshopDeadline
         }
     }
 
@@ -203,7 +218,7 @@ export function computeReserveringsContext(reserveringen, medewerkerId) {
         scenario = 'ad_hoc_vrij'
     }
 
-    return { eigenReservering, eerstvolgendeAnders, terugbrengDeadline, scenario }
+    return { eigenReservering, eerstvolgendeAnders, eerstvolgendeWorkshop, terugbrengDeadline, scenario }
 }
 
 /**
@@ -211,8 +226,12 @@ export function computeReserveringsContext(reserveringen, medewerkerId) {
  * Gebruikt door Dashboard waar reserveringen niet pre-loaded zijn.
  */
 export async function checkReserveringsContext(materiaalId, medewerkerId) {
-    const reserveringen = await getReserveringenVoorItem(materiaalId)
-    return computeReserveringsContext(reserveringen, medewerkerId)
+    const { getGeplandeWorkshopsVoorMateriaal } = await import('./geplandeWorkshops')
+    const [reserveringen, workshops] = await Promise.all([
+        getReserveringenVoorItem(materiaalId),
+        getGeplandeWorkshopsVoorMateriaal(materiaalId),
+    ])
+    return computeReserveringsContext(reserveringen, medewerkerId, workshops)
 }
 
 /**

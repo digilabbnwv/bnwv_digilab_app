@@ -145,16 +145,18 @@ export default function GeplandeWorkshopDetail() {
                         <p className="text-text-muted text-xs mb-1 flex items-center gap-1"><Euro size={11} /> Kosten</p>
                         <p className="text-text-primary">{workshop.kosten ? `€ ${workshop.kosten}` : 'Gratis'}</p>
                     </div>
-                    {workshop.gekoppeld_materiaal && (
+                    {workshop.gekoppeld_materiaal?.length > 0 && (
                         <div className="bg-bg-app rounded-lg p-3 col-span-2">
                             <p className="text-text-muted text-xs mb-1 flex items-center gap-1"><Package size={11} /> Materiaal</p>
-                            <p className="text-text-primary">{workshop.gekoppeld_materiaal.naam}</p>
+                            {workshop.gekoppeld_materiaal.map(m => (
+                                <p key={m.id} className="text-text-primary text-sm">{m.naam}</p>
+                            ))}
                             {workshop.template?.materiaal_omschrijving && (
                                 <p className="text-xs text-text-muted mt-0.5">+ {workshop.template.materiaal_omschrijving}</p>
                             )}
                         </div>
                     )}
-                    {!workshop.gekoppeld_materiaal && workshop.template?.materiaal_omschrijving && (
+                    {(!workshop.gekoppeld_materiaal || workshop.gekoppeld_materiaal.length === 0) && workshop.template?.materiaal_omschrijving && (
                         <div className="bg-bg-app rounded-lg p-3 col-span-2">
                             <p className="text-text-muted text-xs mb-1 flex items-center gap-1"><Package size={11} /> Materiaal</p>
                             <p className="text-text-primary">{workshop.template.materiaal_omschrijving}</p>
