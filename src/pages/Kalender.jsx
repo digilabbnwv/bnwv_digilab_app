@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getAlleGeplandeWorkshops } from '../lib/geplandeWorkshops'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3, Wand2, User } from 'lucide-react'
+import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3, Wand2, User, Settings } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 const STATUSSEN = [
@@ -113,7 +113,7 @@ export default function Kalender() {
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-text-primary">Kalender</h1>
+                <h1 className="text-2xl font-bold text-text-primary">Workshops</h1>
                 <div className="flex items-center gap-2">
                     {/* Weergave toggle */}
                     <div className="flex bg-bg-surface rounded-lg border border-overlay/10 p-0.5">
@@ -134,10 +134,13 @@ export default function Kalender() {
                     </div>
                     {isBeheerder && (
                         <>
-                            <Link to="/kalender/genereren" className="py-2 px-3 rounded-xl bg-bg-surface border border-overlay/20 text-text-secondary hover:text-primary text-sm flex items-center gap-1.5 transition-colors">
+                            <Link to="/workshops/onderhoud" className="py-2 px-3 rounded-xl bg-bg-surface border border-overlay/20 text-text-secondary hover:text-primary text-sm flex items-center gap-1.5 transition-colors">
+                                <Settings size={15} /> Onderhoud
+                            </Link>
+                            <Link to="/workshops/genereren" className="py-2 px-3 rounded-xl bg-bg-surface border border-overlay/20 text-text-secondary hover:text-primary text-sm flex items-center gap-1.5 transition-colors">
                                 <Wand2 size={15} /> Genereren
                             </Link>
-                            <Link to="/kalender/inplannen" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                            <Link to="/workshops/inplannen" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
                                 <Plus size={16} /> Inplannen
                             </Link>
                         </>
@@ -283,7 +286,7 @@ export default function Kalender() {
                     {gefilterd.map(workshop => (
                         <Link
                             key={workshop.id}
-                            to={`/kalender/${workshop.id}`}
+                            to={`/workshops/${workshop.id}`}
                             className="card flex items-center gap-3 p-4 hover:bg-bg-hover transition-colors"
                         >
                             {/* Datum blokje */}

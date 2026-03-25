@@ -141,7 +141,7 @@ export default function WorkshopInplannen() {
                 planning_batch_id: null,
                 aangemaakt_door: medewerker.id,
             })
-            navigate('/kalender')
+            navigate('/workshops')
         } catch (err) {
             console.error(err)
             alert('Fout bij inplannen: ' + err.message)
@@ -154,8 +154,8 @@ export default function WorkshopInplannen() {
 
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
-            <button onClick={() => navigate('/kalender')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
-                <ArrowLeft size={16} /> Terug naar kalender
+            <button onClick={() => navigate('/workshops')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
+                <ArrowLeft size={16} /> Terug naar workshops
             </button>
 
             <div className="flex items-center gap-3 mb-6">

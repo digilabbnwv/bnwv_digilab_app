@@ -90,16 +90,17 @@ export default function App() {
         <Route path="/melding/nieuw" element={<ProtectedRoute><PageLayout><OnderhoudMelden /></PageLayout></ProtectedRoute>} />
         <Route path="/melding/nieuw/:materiaalId" element={<ProtectedRoute><PageLayout><OnderhoudMelden /></PageLayout></ProtectedRoute>} />
 
-        {/* Workshops */}
-        <Route path="/workshops" element={<ProtectedRoute><PageLayout><WorkshopCatalogus /></PageLayout></ProtectedRoute>} />
-        <Route path="/workshops/nieuw" element={<BeheerderRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></BeheerderRoute>} />
-        <Route path="/workshops/:id" element={<ProtectedRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></ProtectedRoute>} />
+        {/* Workshops — planning kalender + beheer */}
+        <Route path="/workshops" element={<ProtectedRoute><PageLayout><Kalender /></PageLayout></ProtectedRoute>} />
+        <Route path="/workshops/inplannen" element={<BeheerderRoute><PageLayout><WorkshopInplannen /></PageLayout></BeheerderRoute>} />
+        <Route path="/workshops/genereren" element={<BeheerderRoute><PageLayout><PlanningGenereren /></PageLayout></BeheerderRoute>} />
+        <Route path="/workshops/onderhoud" element={<BeheerderRoute><PageLayout><WorkshopCatalogus /></PageLayout></BeheerderRoute>} />
+        <Route path="/workshops/onderhoud/nieuw" element={<BeheerderRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></BeheerderRoute>} />
+        <Route path="/workshops/onderhoud/:id" element={<BeheerderRoute><PageLayout><WorkshopTemplateDetail /></PageLayout></BeheerderRoute>} />
+        <Route path="/workshops/:id" element={<ProtectedRoute><PageLayout><GeplandeWorkshopDetail /></PageLayout></ProtectedRoute>} />
 
-        {/* Kalender */}
-        <Route path="/kalender" element={<ProtectedRoute><PageLayout><Kalender /></PageLayout></ProtectedRoute>} />
-        <Route path="/kalender/inplannen" element={<BeheerderRoute><PageLayout><WorkshopInplannen /></PageLayout></BeheerderRoute>} />
-        <Route path="/kalender/genereren" element={<BeheerderRoute><PageLayout><PlanningGenereren /></PageLayout></BeheerderRoute>} />
-        <Route path="/kalender/:id" element={<ProtectedRoute><PageLayout><GeplandeWorkshopDetail /></PageLayout></ProtectedRoute>} />
+        {/* Legacy redirect */}
+        <Route path="/kalender/*" element={<Navigate to="/workshops" replace />} />
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />

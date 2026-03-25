@@ -44,9 +44,9 @@ export default function WorkshopCatalogus() {
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-text-primary">Workshops</h1>
+                <h1 className="text-2xl font-bold text-text-primary">Workshop onderhoud</h1>
                 {isBeheerder && (
-                    <Link to="/workshops/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                    <Link to="/workshops/onderhoud/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
                         <Plus size={16} /> Nieuw
                     </Link>
                 )}
@@ -101,7 +101,7 @@ export default function WorkshopCatalogus() {
                     {gefilterd.map(template => (
                         <Link
                             key={template.id}
-                            to={`/workshops/${template.id}`}
+                            to={`/workshops/onderhoud/${template.id}`}
                             className="card flex items-center gap-3 p-4 hover:bg-bg-hover transition-colors"
                         >
                             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

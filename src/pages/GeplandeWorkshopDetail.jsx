@@ -86,7 +86,7 @@ export default function GeplandeWorkshopDetail() {
         if (!confirm('Weet je zeker dat je deze geplande workshop wilt verwijderen?')) return
         try {
             await verwijderGeplandeWorkshop(id)
-            navigate('/kalender')
+            navigate('/workshops')
         } catch (err) {
             alert('Fout bij verwijderen: ' + err.message)
         }
@@ -104,8 +104,8 @@ export default function GeplandeWorkshopDetail() {
 
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
-            <button onClick={() => navigate('/kalender')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
-                <ArrowLeft size={16} /> Terug naar kalender
+            <button onClick={() => navigate('/workshops')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
+                <ArrowLeft size={16} /> Terug naar workshops
             </button>
 
             {/* Header */}

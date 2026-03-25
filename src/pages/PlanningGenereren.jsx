@@ -75,8 +75,8 @@ export default function PlanningGenereren() {
 
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
-            <button onClick={() => stap > 1 ? setStap(s => s - 1) : navigate('/kalender')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
-                <ArrowLeft size={16} /> {stap > 1 ? 'Terug' : 'Terug naar kalender'}
+            <button onClick={() => stap > 1 ? setStap(s => s - 1) : navigate('/workshops')} className="flex items-center gap-1 text-text-muted hover:text-text-primary mb-4 text-sm">
+                <ArrowLeft size={16} /> {stap > 1 ? 'Terug' : 'Terug naar workshops'}
             </button>
 
             {/* Header + stappen-indicator */}
@@ -237,11 +237,11 @@ export default function PlanningGenereren() {
                     </div>
                     <h2 className="text-xl font-bold text-text-primary mb-2">Planning opgeslagen!</h2>
                     <p className="text-text-muted text-sm mb-6">
-                        {zichtbaar.length} concept-workshops staan klaar in de kalender.
+                        {zichtbaar.length} concept-workshops staan klaar in het overzicht.
                         Je kunt ze daar per stuk bewerken en publiceren.
                     </p>
-                    <button onClick={() => navigate('/kalender')} className="btn-primary py-3 px-6 w-full">
-                        Naar kalender
+                    <button onClick={() => navigate('/workshops')} className="btn-primary py-3 px-6 w-full">
+                        Naar workshops
                     </button>
                 </div>
             )}
