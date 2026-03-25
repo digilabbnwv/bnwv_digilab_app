@@ -102,6 +102,38 @@ export async function syncAgendaWijzigen(reservering) {
 }
 
 /**
+ * Sync materiaal van een geplande workshop naar de ictleskisten-kalender.
+ *
+ * Per gekoppeld materiaal wordt een hele-dag afspraak aangemaakt of geannuleerd.
+ * Gebruikt het reservering-payload formaat zodat Power Automate ze hetzelfde verwerkt.
+ *
+ * @param {object} workshop - Volledig geplandeWorkshop-object (met gekoppeld_materiaal incl. qr_code)
+ * @param {'aanmaken'|'annuleren'} actie
+ */
+export async function syncWorkshopMateriaalAgenda(workshop, actie) {
+    const materialen = workshop.gekoppeld_materiaal
+    if (!materialen?.length) return
+
+    const toelichting = `Workshop: ${workshop.titel}${workshop.opmerkingen ? ' — ' + workshop.opmerkingen : ''}`
+
+    await Promise.allSettled(
+        materialen.map(materiaal =>
+            roepEdgeFunctionAan({
+                actie,
+                reservering_id:   `${workshop.id}_${materiaal.id}`,
+                product_naam:     materiaal.naam,
+                product_code:     materiaal.qr_code ?? 'workshop',
+                medewerker_naam:  'Digilab workshop',
+                medewerker_email: 'digilab@bibliotheeknwveluwe.nl',
+                van_datum:        workshop.datum,
+                tot_datum:        workshop.datum,
+                toelichting,
+            })
+        )
+    )
+}
+
+/**
  * Sync een geplande workshop naar de juiste Digilab-agenda in Outlook.
  *
  * Alleen Ermelo en Nunspeet krijgen een agenda-event. Andere locaties worden

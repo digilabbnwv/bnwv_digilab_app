@@ -814,7 +814,7 @@ function enrichGeplandeWorkshop(gw, db) {
     const gekoppeld_materiaal = (gw.materiaal_ids || [])
         .map(mid => db.materiaal.find(m => m.id === mid))
         .filter(Boolean)
-        .map(m => ({ id: m.id, naam: m.naam, type: m.type }))
+        .map(m => ({ id: m.id, naam: m.naam, type: m.type, qr_code: m.qr_code }))
     return {
         ...gw,
         template: tmpl ? { id: tmpl.id, titel: tmpl.titel, materiaal_omschrijving: tmpl.materiaal_omschrijving, doelgroep: tmpl.doelgroep, max_deelnemers: tmpl.max_deelnemers, standaard_kosten: tmpl.standaard_kosten, standaard_duur_minuten: tmpl.standaard_duur_minuten } : null,

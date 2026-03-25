@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getGeplandeWorkshop, updateGeplandeWorkshop, verwijderGeplandeWorkshop } from '../lib/geplandeWorkshops'
-import { syncWorkshopAgenda } from '../lib/agendaSync'
+import { syncWorkshopAgenda, syncWorkshopMateriaalAgenda } from '../lib/agendaSync'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
@@ -72,8 +72,11 @@ export default function GeplandeWorkshopDetail() {
             setWorkshop(bijgewerkt)
             if (nieuweStatus === 'gepubliceerd') {
                 await syncWorkshopAgenda(bijgewerkt, 'aanmaken')
-            } else if (nieuweStatus === 'geannuleerd') {
+                await syncWorkshopMateriaalAgenda(bijgewerkt, 'aanmaken')
+            } else if (nieuweStatus === 'geannuleerd' || nieuweStatus === 'concept') {
+                // Annuleren OF depubliceren → afspraken verwijderen
                 await syncWorkshopAgenda(bijgewerkt, 'annuleren')
+                await syncWorkshopMateriaalAgenda(bijgewerkt, 'annuleren')
             }
         } catch (err) {
             alert('Fout: ' + err.message)
@@ -85,6 +88,11 @@ export default function GeplandeWorkshopDetail() {
     async function handleVerwijder() {
         if (!confirm('Weet je zeker dat je deze geplande workshop wilt verwijderen?')) return
         try {
+            // Agenda opruimen als workshop gepubliceerd was
+            if (workshop.status === 'gepubliceerd') {
+                await syncWorkshopAgenda(workshop, 'annuleren')
+                await syncWorkshopMateriaalAgenda(workshop, 'annuleren')
+            }
             await verwijderGeplandeWorkshop(id)
             navigate('/workshops')
         } catch (err) {

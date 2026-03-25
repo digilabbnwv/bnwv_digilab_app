@@ -44,7 +44,7 @@ export async function getGeplandeWorkshop(id) {
     if (data?.materiaal_ids?.length) {
         const { data: materialen } = await supabase
             .from('materiaal')
-            .select('id, naam, type')
+            .select('id, naam, type, qr_code')
             .in('id', data.materiaal_ids)
         data.gekoppeld_materiaal = materialen || []
     } else {
