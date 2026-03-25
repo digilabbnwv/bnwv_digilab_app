@@ -93,7 +93,7 @@ export default function WorkshopTemplateDetail() {
             } else {
                 await updateWorkshopTemplate(id, payload)
             }
-            navigate('/workshops')
+            navigate('/workshops/onderhoud')
         } catch (err) {
             console.error(err)
             alert('Fout bij opslaan: ' + err.message)
@@ -106,7 +106,7 @@ export default function WorkshopTemplateDetail() {
         if (!confirm('Weet je zeker dat je deze workshop wilt verwijderen?')) return
         try {
             await verwijderWorkshopTemplate(id)
-            navigate('/workshops')
+            navigate('/workshops/onderhoud')
         } catch (err) {
             alert('Fout bij verwijderen: ' + err.message)
         }
@@ -119,7 +119,7 @@ export default function WorkshopTemplateDetail() {
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
-                <button onClick={() => navigate('/workshops')} className="flex items-center gap-1 text-text-muted hover:text-text-primary text-sm">
+                <button onClick={() => navigate('/workshops/onderhoud')} className="flex items-center gap-1 text-text-muted hover:text-text-primary text-sm">
                     <ArrowLeft size={16} /> Terug naar overzicht
                 </button>
                 {!isNieuw && isBeheerder && leesAlleen && (
