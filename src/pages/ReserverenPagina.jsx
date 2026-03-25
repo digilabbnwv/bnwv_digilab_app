@@ -542,6 +542,32 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, to
     return (
         <div className="space-y-2">
             {reserveringen.map(r => {
+                if (r._isWorkshop) {
+                    // Workshop-kaart
+                    return (
+                        <Link key={`ws-${r.id}`} to={`/workshops/${r.id}`} className="card overflow-hidden block">
+                            <div className="h-1 w-full bg-error/70" />
+                            <div className="p-4">
+                                <p className="font-semibold text-text-primary truncate">
+                                    🎓 {r.titel}
+                                </p>
+                                <p className="text-sm text-text-secondary mt-0.5 flex items-center gap-1.5">
+                                    <Calendar size={13} className="flex-shrink-0" />
+                                    {formatDatum(r.datum)}
+                                    {r.start_tijd && <> · {r.start_tijd.slice(0, 5)}–{r.eind_tijd?.slice(0, 5)}</>}
+                                </p>
+                                <p className="text-xs text-text-muted mt-1 flex items-center gap-1">
+                                    <Package size={11} />
+                                    {r.locatie}
+                                </p>
+                                {r.opmerkingen && (
+                                    <p className="text-xs text-text-muted mt-1 italic line-clamp-2">"{r.opmerkingen}"</p>
+                                )}
+                            </div>
+                        </Link>
+                    )
+                }
+
                 const isMijn = r.medewerker?.id === medewerker.id
                 const kleur = kleurVoorItem(r.materiaal_id, alleItems)
                 return (
