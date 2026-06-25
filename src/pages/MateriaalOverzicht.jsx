@@ -4,7 +4,7 @@ import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
 import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
-import { Search, Package, Plus, MapPin, User, AlertTriangle } from 'lucide-react'
+import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
 
@@ -56,11 +56,20 @@ export default function MateriaalOverzicht() {
         <div className="app-container pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-text-primary">Materiaal</h1>
-                {isBeheerder && (
-                    <Link to="/materiaal/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
-                        <Plus size={16} /> Nieuw
+                <div className="flex items-center gap-2">
+                    <Link
+                        to="/item/scan"
+                        className="btn-ghost py-2 px-3 text-sm flex items-center gap-2"
+                        aria-label="QR-code scannen"
+                    >
+                        <QrCode size={16} /> Scan
                     </Link>
-                )}
+                    {isBeheerder && (
+                        <Link to="/materiaal/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                            <Plus size={16} /> Nieuw
+                        </Link>
+                    )}
+                </div>
             </div>
 
             {/* Zoekbalk */}

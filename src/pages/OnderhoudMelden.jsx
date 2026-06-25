@@ -3,10 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { maakMelding, uploadFoto } from '../lib/onderhoud'
 import { getAllMateriaal } from '../lib/materiaal'
-import { verifyPin } from '../lib/auth'
-import Modal from '../components/Modal'
-import PincodeInvoer from '../components/PincodeInvoer'
-import { ArrowLeft, Wrench, Camera, X, Check } from 'lucide-react'
+import MateriaalSelect from '../components/MateriaalSelect'
+import { useToast } from '../context/ToastContext'
+import { foutTekst } from '../lib/foutmelding'
+import { ArrowLeft, Wrench, Camera, X } from 'lucide-react'
 
 const TYPEN = [
     { key: 'kapot', label: '🔧 Iets is kapot', beschrijving: 'Apparaat of onderdeel functioneert niet correct' },
@@ -19,6 +19,7 @@ export default function OnderhoudMelden() {
     const { materiaalId } = useParams()   // /melding/nieuw/:materiaalId
     const { medewerker } = useAuth()
     const navigate = useNavigate()
+    const toast = useToast()
 
     const [alleItems, setAlleItems] = useState([])
     const [gekozenItemId, setGekozenItemId] = useState(materiaalId || '')
@@ -26,11 +27,7 @@ export default function OnderhoudMelden() {
     const [toelichting, setToelichting] = useState('')
     const [foto, setFoto] = useState(null)
     const [fotoPreview, setFotoPreview] = useState('')
-    const [toonPinModal, setToonPinModal] = useState(false)
-    const [pinFout, setPinFout] = useState('')
-    const [pinLoading, setPinLoading] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [succes, setSucces] = useState(false)
     const [fout, setFout] = useState('')
 
     useEffect(() => {
@@ -52,21 +49,12 @@ export default function OnderhoudMelden() {
         setFotoPreview('')
     }
 
-    const handleBevestig = () => {
-        if (!gekozenItemId) return setFout('Kies een item')
+    const handleBevestig = async () => {
+        if (!gekozenItemId) return setFout('Kies materiaal')
         if (!gekozenType) return setFout('Kies een type melding')
         setFout('')
-        setToonPinModal(true)
-    }
-
-    const handlePinBevestig = async (pin) => {
-        setPinLoading(true)
-        setPinFout('')
+        setLoading(true)
         try {
-            await verifyPin(medewerker.id, pin)
-            setToonPinModal(false)
-            setLoading(true)
-
             let fotoUrl = null
             if (foto) {
                 fotoUrl = await uploadFoto(foto, gekozenItemId)
@@ -80,28 +68,13 @@ export default function OnderhoudMelden() {
                 fotoUrl,
             })
 
-            setSucces(true)
-            setTimeout(() => navigate('/melding'), 2000)
+            toast.succes('Melding ingediend — zichtbaar voor alle medewerkers.')
+            navigate('/melding')
         } catch (err) {
-            setPinFout(err.message || 'Onjuiste pincode')
+            toast.fout(foutTekst(err, 'Melding indienen lukte niet — probeer het opnieuw.'))
         } finally {
-            setPinLoading(false)
             setLoading(false)
         }
-    }
-
-    if (succes) {
-        return (
-            <div className="min-h-dvh flex items-center justify-center px-4">
-                <div className="card p-8 text-center max-w-sm w-full space-y-4 animate-fadeIn">
-                    <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto">
-                        <Check size={28} className="text-success" />
-                    </div>
-                    <h2 className="text-xl font-bold text-text-primary">Melding ingediend!</h2>
-                    <p className="text-text-muted text-sm">Je melding is zichtbaar voor alle medewerkers.</p>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -118,19 +91,15 @@ export default function OnderhoudMelden() {
             </div>
 
             <div className="space-y-4">
-                {/* Item selecteren */}
+                {/* Materiaal selecteren */}
                 <div className="card p-4">
-                    <label className="block text-text-secondary text-sm font-medium mb-3">1. Welk item?</label>
-                    <select
-                        className="input"
+                    <label className="block text-text-secondary text-sm font-medium mb-3">1. Welk materiaal?</label>
+                    <MateriaalSelect
+                        items={alleItems}
                         value={gekozenItemId}
-                        onChange={e => setGekozenItemId(e.target.value)}
-                    >
-                        <option value="">Kies een item...</option>
-                        {alleItems.map(i => (
-                            <option key={i.id} value={i.id}>{i.naam} ({i.type})</option>
-                        ))}
-                    </select>
+                        onChange={setGekozenItemId}
+                        placeholder="Zoek en kies materiaal..."
+                    />
                 </div>
 
                 {/* Type melding */}
@@ -205,16 +174,6 @@ export default function OnderhoudMelden() {
                     }
                 </button>
             </div>
-
-            {toonPinModal && (
-                <Modal title="Bevestig met pincode" onClose={() => setToonPinModal(false)}>
-                    <PincodeInvoer
-                        onBevestig={handlePinBevestig}
-                        loading={pinLoading}
-                        error={pinFout}
-                    />
-                </Modal>
-            )}
         </div>
     )
 }

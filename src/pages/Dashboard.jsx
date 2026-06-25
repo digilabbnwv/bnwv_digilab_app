@@ -5,14 +5,17 @@ import { getUitgechecktMateriaal, getMijnMateriaal, getAllMateriaal, uitchecken 
 import { getOpenMeldingen } from '../lib/onderhoud'
 import { checkReserveringsContext, computeReserveringsContext, getReserveringenVoorItem } from '../lib/reserveringen'
 import { getGeplandeWorkshopsVoorMateriaal } from '../lib/geplandeWorkshops'
-import { verifyPin } from '../lib/auth'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
-import PincodeInvoer from '../components/PincodeInvoer'
-import { CalendarDays, PackagePlus, Wrench, Package, AlertTriangle, ChevronRight, User, CalendarCheck, Clock } from 'lucide-react'
+import MateriaalSelect from '../components/MateriaalSelect'
+import MeenemenContextKaart from '../components/MeenemenContextKaart'
+import { useToast } from '../context/ToastContext'
+import { foutTekst } from '../lib/foutmelding'
+import { CalendarDays, PackagePlus, Wrench, Package, AlertTriangle, ChevronRight, User, Clock, QrCode } from 'lucide-react'
 
 export default function Dashboard() {
     const { medewerker, isBeheerder } = useAuth()
+    const toast = useToast()
     const [uitgecheckt, setUitgecheckt] = useState([])
     const [mijnMateriaal, setMijnMateriaal] = useState([])
     const [meldingen, setMeldingen] = useState([])
@@ -24,10 +27,8 @@ export default function Dashboard() {
     const [gekozenId, setGekozenId] = useState('')
     const [meeneemStap, setMeeneemStap] = useState(1) // 1=kies, 2=context, 3=pin
     const [meeneemLoading, setMeeneemLoading] = useState(false)
-    const [meeneemFout, setMeeneemFout] = useState('')
     const [resContext, setResContext] = useState(null)
     const [resContextLoading, setResContextLoading] = useState(false)
-    const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
     const [workshopWaarschuwingen, setWorkshopWaarschuwingen] = useState([])
     const [deadlines, setDeadlines] = useState({}) // { materiaalId: 'YYYY-MM-DD' }
 
@@ -76,9 +77,7 @@ export default function Dashboard() {
         setToonMeenemen(true)
         setGekozenId('')
         setMeeneemStap(1)
-        setMeeneemFout('')
         setResContext(null)
-        setGekoppeldeReservering(null)
         try {
             const alle = await getAllMateriaal()
             setBeschikbaar(alle.filter(i => i.status === 'beschikbaar'))
@@ -100,7 +99,6 @@ export default function Dashboard() {
                 const dagVerschil = Math.ceil((new Date(w.datum + 'T00:00:00') - new Date()) / 86400000)
                 return dagVerschil <= 7
             }))
-            setGekoppeldeReservering(null)
             setMeeneemStap(2)
         } catch (err) {
             console.error(err)
@@ -112,16 +110,16 @@ export default function Dashboard() {
         }
     }
 
-    const handleMeeneemPin = async (pin) => {
+    // Dashboard toont alleen beschikbaar materiaal → nooit een overname → geen pincode nodig (F10).
+    const doMeenemen = async (reservering) => {
         setMeeneemLoading(true)
-        setMeeneemFout('')
         try {
-            await verifyPin(medewerker.id, pin)
-            await uitchecken(gekozenId, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
+            await uitchecken(gekozenId, medewerker.id, medewerker.naam, reservering?.id || null)
             setToonMeenemen(false)
+            toast.succes('Materiaal meegenomen!')
             await laden()
         } catch (err) {
-            setMeeneemFout(err.message || 'Uitchecken mislukt')
+            toast.fout(foutTekst(err, 'Meenemen lukte niet — probeer het opnieuw.'))
         } finally {
             setMeeneemLoading(false)
         }
@@ -151,6 +149,14 @@ export default function Dashboard() {
                     className="w-20 h-20 object-contain opacity-80"
                 />
             </div>
+
+            {/* Scannen — primaire ingang voor de meest gebruikte handeling */}
+            <Link
+                to="/item/scan"
+                className="btn-primary w-full flex items-center justify-center gap-2 py-4 text-base"
+            >
+                <QrCode size={22} /> QR-code scannen
+            </Link>
 
             {/* Snelknoppen */}
             <div className="grid grid-cols-3 gap-3">
@@ -308,23 +314,19 @@ export default function Dashboard() {
             {/* Modal: Nu meenemen */}
             {toonMeenemen && (
                 <Modal
-                    title={meeneemStap === 1 ? 'Nu meenemen' : meeneemStap === 2 ? 'Meenemen' : 'Bevestig met pincode'}
+                    title={meeneemStap === 1 ? 'Nu meenemen' : 'Meenemen'}
                     onClose={() => setToonMeenemen(false)}
                 >
                     {meeneemStap === 1 && (
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-text-secondary text-sm font-medium mb-2">Kies materiaal *</label>
-                                <select
-                                    className="input"
+                                <MateriaalSelect
+                                    items={beschikbaar}
                                     value={gekozenId}
-                                    onChange={e => setGekozenId(e.target.value)}
-                                >
-                                    <option value="">Selecteer beschikbaar materiaal...</option>
-                                    {beschikbaar.map(i => (
-                                        <option key={i.id} value={i.id}>{i.naam} — {i.type}</option>
-                                    ))}
-                                </select>
+                                    onChange={setGekozenId}
+                                    placeholder="Zoek en kies beschikbaar materiaal..."
+                                />
                             </div>
                             {beschikbaar.length === 0 && (
                                 <p className="text-text-muted text-sm text-center">Geen beschikbaar materiaal gevonden</p>
@@ -346,114 +348,13 @@ export default function Dashboard() {
                             <p className="text-text-secondary text-sm">
                                 <strong className="text-text-primary">{beschikbaar.find(i => i.id === gekozenId)?.naam}</strong>
                             </p>
-
-                            {/* Scenario A: Eigen reservering */}
-                            {resContext.scenario === 'eigen_reservering' && (
-                                <div className="rounded-xl p-4 border border-success/30 bg-success/10 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <CalendarCheck size={18} className="text-success" />
-                                        <p className="text-success text-sm font-semibold">Dit item staat voor jou gereserveerd</p>
-                                    </div>
-                                    <p className="text-success/80 text-xs">
-                                        {formatDatum(resContext.eigenReservering.van_datum)} t/m {formatDatum(resContext.eigenReservering.tot_datum)}
-                                        {resContext.eigenReservering.toelichting && ` — ${resContext.eigenReservering.toelichting}`}
-                                    </p>
-                                    <button
-                                        onClick={() => { setGekoppeldeReservering(resContext.eigenReservering); setMeeneemStap(3) }}
-                                        className="btn-primary w-full py-2.5 mt-2"
-                                    >
-                                        Ophalen voor reservering
-                                    </button>
-                                    <button
-                                        onClick={() => { setGekoppeldeReservering(null); setMeeneemStap(3) }}
-                                        className="text-text-muted text-xs underline w-full text-center mt-1"
-                                    >
-                                        Liever ad-hoc meenemen
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Scenario B: Vrij beschikbaar */}
-                            {resContext.scenario === 'ad_hoc_vrij' && (
-                                <div className="rounded-xl p-4 border border-overlay/10 bg-bg-hover space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <PackagePlus size={18} className="text-text-secondary" />
-                                        <p className="text-text-primary text-sm font-semibold">Geen reserveringen — vrij beschikbaar</p>
-                                    </div>
-                                    <button
-                                        onClick={() => { setGekoppeldeReservering(null); setMeeneemStap(3) }}
-                                        className="btn-primary w-full py-2.5 mt-2"
-                                    >
-                                        Meenemen
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Scenario C: Conflict met reservering van collega */}
-                            {resContext.scenario === 'ad_hoc_conflict' && (
-                                <div className="rounded-xl p-4 border border-amber-500/40 bg-amber-500/10 space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <AlertTriangle size={18} className="text-amber-400" />
-                                        <p className="text-amber-400 text-sm font-semibold">
-                                            {resContext.eerstvolgendeAnders?.medewerker?.naam || 'Een collega'} heeft dit item gereserveerd
-                                        </p>
-                                    </div>
-                                    <p className="text-amber-400/80 text-xs">
-                                        Reservering begint op {formatDatum(resContext.eerstvolgendeAnders?.van_datum)}
-                                    </p>
-                                    <div className="bg-amber-500/10 rounded-lg p-3 flex items-center gap-2">
-                                        <Clock size={16} className="text-amber-300 flex-shrink-0" />
-                                        <p className="text-amber-300 text-sm font-semibold">
-                                            Breng terug voor: {formatDatum(resContext.terugbrengDeadline)}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => { setGekoppeldeReservering(null); setMeeneemStap(3) }}
-                                        className="btn-primary w-full py-2.5 bg-amber-600 hover:bg-amber-700"
-                                    >
-                                        Ik begrijp het, meenemen
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Workshop-waarschuwing (bij alle scenario's) */}
-                            {workshopWaarschuwingen.length > 0 && (
-                                <div className="rounded-xl p-4 border border-error/30 bg-error/10 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <CalendarDays size={18} className="text-error" />
-                                        <p className="text-error text-sm font-semibold">
-                                            Binnenkort nodig voor workshop
-                                        </p>
-                                    </div>
-                                    {workshopWaarschuwingen.map(w => (
-                                        <p key={w.id} className="text-error/80 text-xs">
-                                            {w.titel} — {formatDatum(w.datum)} {w.start_tijd?.slice(0, 5)} · {w.locatie}
-                                        </p>
-                                    ))}
-                                    <p className="text-error/60 text-xs">
-                                        Zorg dat het materiaal op tijd terug is voor de workshop.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {meeneemStap === 3 && (
-                        <>
-                            <div className="mb-4">
-                                <p className="text-text-secondary text-sm">
-                                    Je neemt <strong className="text-text-primary">{beschikbaar.find(i => i.id === gekozenId)?.naam}</strong> mee
-                                    {gekoppeldeReservering ? ' voor je reservering' : ''}.
-                                </p>
-                                <p className="text-text-muted text-xs mt-1">Bevestig met jouw pincode.</p>
-                            </div>
-                            <PincodeInvoer
-                                onBevestig={handleMeeneemPin}
-                                loading={meeneemLoading}
-                                error={meeneemFout}
-                                label="Jouw pincode"
+                            <MeenemenContextKaart
+                                context={resContext}
+                                workshops={workshopWaarschuwingen}
+                                bezig={meeneemLoading}
+                                onKies={doMeenemen}
                             />
-                        </>
+                        </div>
                     )}
                 </Modal>
             )}

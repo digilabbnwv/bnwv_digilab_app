@@ -10,6 +10,10 @@ import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
 import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
+import MeenemenContextKaart from '../components/MeenemenContextKaart'
+import QrScanner from '../components/QrScanner'
+import { useToast } from '../context/ToastContext'
+import { foutTekst } from '../lib/foutmelding'
 import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet']
@@ -18,6 +22,7 @@ export default function ItemPagina() {
     const { qrCode } = useParams()
     const { medewerker, isBeheerder } = useAuth()
     const navigate = useNavigate()
+    const toast = useToast()
 
     const [item, setItem] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -27,7 +32,6 @@ export default function ItemPagina() {
     const [gekozenLocatie, setGekozenLocatie] = useState('')
     const [pinFout, setPinFout] = useState('')
     const [pinLoading, setPinLoading] = useState(false)
-    const [succes, setSucces] = useState('')
     const [reserveringen, setReserveringen] = useState([])
     const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
     const [workshopConflicten, setWorkshopConflicten] = useState([])
@@ -63,18 +67,22 @@ export default function ItemPagina() {
         }
     }, [qrCode, isScanModus, laadItem])
 
-    const formatDatum = (d) => {
-        if (!d) return ''
-        const [, m, dag] = d.split('-')
-        return `${dag}-${m}`
-    }
+    const openMeldingen = item?.onderhoudsmeldingen?.filter(m => m.status === 'open') || []
+    const heeftOpenMeldingen = openMeldingen.length > 0
+    const isUitgechecktDoorMij = item?.huidige_medewerker_id === medewerker?.id
+    const isUitgechecktDoorCollega = item?.status === 'in_gebruik' && !isUitgechecktDoorMij
 
     const openActie = (type) => {
         setActie(type)
-        setStap(1)
         setPinFout('')
         setGekozenLocatie('')
         setGekoppeldeReservering(null)
+        // Eigen materiaal terugbrengen vraagt geen pincode → direct naar locatiekeuze.
+        if (type === 'terugbrengen' && !isUitgechecktDoorCollega) {
+            setStap(2)
+        } else {
+            setStap(1)
+        }
     }
 
     const sluitActie = () => {
@@ -83,35 +91,41 @@ export default function ItemPagina() {
         setPinFout('')
     }
 
-    const openMeldingen = item?.onderhoudsmeldingen?.filter(m => m.status === 'open') || []
-    const heeftOpenMeldingen = openMeldingen.length > 0
-    const isUitgechecktDoorMij = item?.huidige_medewerker_id === medewerker?.id
-    const isUitgechecktDoorCollega = item?.status === 'in_gebruik' && !isUitgechecktDoorMij
+    // Eigen/vrij meenemen → direct uitchecken (geen pincode).
+    // Overnemen van een collega is gevoelig → pincode + extra bevestiging.
+    const bevestigMeenemen = async (reservering) => {
+        setGekoppeldeReservering(reservering)
+        if (isUitgechecktDoorCollega) {
+            setStap(2) // pincode → overrule
+        } else {
+            await doeUitchecken(reservering)
+        }
+    }
 
+    const doeUitchecken = async (reservering) => {
+        setPinLoading(true)
+        try {
+            await uitchecken(item.id, medewerker.id, medewerker.naam, reservering?.id || null)
+            toast.succes('Materiaal meegenomen!')
+            sluitActie()
+            laadItem(qrCode)
+        } catch (err) {
+            sluitActie()
+            toast.fout(foutTekst(err, 'Meenemen lukte niet — probeer het opnieuw of meld het bij de beheerder.'))
+        } finally {
+            setPinLoading(false)
+        }
+    }
+
+    // Pincode-stap wordt alleen bereikt bij overnemen van een collega (gevoelig).
     const handlePinMeenemen = async (pin) => {
         setPinLoading(true)
         setPinFout('')
         try {
             await verifyPin(medewerker.id, pin)
-        } catch (err) {
-            setPinFout(err.message || 'Onjuiste pincode')
-            setPinLoading(false)
-            return
-        }
-
-        // Pincode correct — nu uitchecken
-        try {
-            if (isUitgechecktDoorCollega) {
-                setStap(4) // overrule bevestiging
-            } else {
-                await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
-                setSucces('Item succesvol meegenomen!')
-                sluitActie()
-                laadItem(qrCode)
-            }
-        } catch (err) {
-            sluitActie()
-            setFout(`Fout bij meenemen: ${err.message || err.details || JSON.stringify(err)}`)
+            setStap(4) // overrule-bevestiging
+        } catch {
+            setPinFout('Onjuiste pincode')
         } finally {
             setPinLoading(false)
         }
@@ -122,13 +136,9 @@ export default function ItemPagina() {
         setPinFout('')
         try {
             await verifyPin(medewerker.id, pin)
-            if (isUitgechecktDoorCollega) {
-                setStap(3) // overrule bevestiging
-            } else {
-                setStap(2) // locatie kiezen
-            }
-        } catch (err) {
-            setPinFout(err.message || 'Onjuiste pincode')
+            setStap(2) // locatie kiezen
+        } catch {
+            setPinFout('Onjuiste pincode')
         } finally {
             setPinLoading(false)
         }
@@ -139,12 +149,12 @@ export default function ItemPagina() {
         setPinLoading(true)
         try {
             await inchecken(item.id, medewerker.id, gekozenLocatie, item.huidige_locatie)
-            setSucces(`Item terug op ${gekozenLocatie}!`)
+            toast.succes(`Materiaal terug op ${gekozenLocatie}!`)
             sluitActie()
             laadItem(qrCode)
         } catch (err) {
             sluitActie()
-            setFout(`Fout bij terugbrengen: ${err.message || err.details || JSON.stringify(err)}`)
+            toast.fout(foutTekst(err, 'Terugbrengen lukte niet — probeer het opnieuw.'))
         } finally {
             setPinLoading(false)
         }
@@ -153,18 +163,14 @@ export default function ItemPagina() {
     const handleOverrule = async () => {
         setPinLoading(true)
         try {
-            if (actie === 'meenemen') {
-                await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
-                setSucces('Item overgenomen!')
-                sluitActie()
-                laadItem(qrCode)
-            } else {
-                setStap(2)
-                setPinLoading(false)
-            }
+            await uitchecken(item.id, medewerker.id, medewerker.naam, gekoppeldeReservering?.id || null)
+            toast.succes('Materiaal overgenomen!')
+            sluitActie()
+            laadItem(qrCode)
         } catch (err) {
             sluitActie()
-            setFout(`Fout bij overnemen: ${err.message || err.details || JSON.stringify(err)}`)
+            toast.fout(foutTekst(err, 'Overnemen lukte niet — probeer het opnieuw.'))
+        } finally {
             setPinLoading(false)
         }
     }
@@ -174,39 +180,37 @@ export default function ItemPagina() {
         setPinLoading(true)
         try {
             await overrule(item.id, medewerker.id, medewerker.naam, item.huidige_medewerker_id, gekozenLocatie)
-            setSucces(`Item teruggebracht op ${gekozenLocatie}!`)
+            toast.succes(`Materiaal teruggebracht op ${gekozenLocatie}!`)
             sluitActie()
             laadItem(qrCode)
         } catch (err) {
-            setPinFout(err.message)
+            toast.fout(foutTekst(err, 'Terugbrengen lukte niet — probeer het opnieuw.'))
         } finally {
             setPinLoading(false)
         }
     }
 
+    // Gescande waarde kan een volledige URL zijn (.../item/CODE) of de kale QR-code.
+    const handleScanDetect = useCallback((waarde) => {
+        if (!waarde) return
+        const m = String(waarde).match(/\/item\/([^/?#]+)/)
+        const code = m ? decodeURIComponent(m[1]) : String(waarde).trim()
+        navigate(`/item/${code}`, { replace: true })
+    }, [navigate])
+
     if (isScanModus) {
         return (
-            <div className="app-container pt-8 pb-4">
+            <div className="app-container pt-8 pb-4 animate-fadeIn">
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-muted mb-6 hover:text-text-secondary">
                     <ArrowLeft size={18} /> Terug
                 </button>
-                <div className="card p-8 text-center space-y-4">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary-end flex items-center justify-center mx-auto shadow-lg shadow-primary/30">
-                        <QrCode size={36} className="text-white" />
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary-end flex items-center justify-center shadow-lg shadow-primary/30 flex-shrink-0">
+                        <QrCode size={22} className="text-white" />
                     </div>
-                    <h1 className="text-xl font-bold text-text-primary">QR-code scannen</h1>
-                    <p className="text-text-secondary text-sm">
-                        Gebruik de camera van je telefoon om een QR-code te scannen.<br />
-                        De camera-app opent automatisch de juiste pagina.
-                    </p>
-                    <div className="bg-bg-app rounded-xl p-4 text-left space-y-2">
-                        <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">URL-formaat</p>
-                        <code className="text-accent text-xs break-all">/item/[qr-code]</code>
-                    </div>
-                    <p className="text-text-muted text-xs">
-                        Tip: open de camera-app, richt op de QR-code en tik op de melding om de link te openen.
-                    </p>
+                    <h1 className="text-2xl font-bold text-text-primary">QR-code scannen</h1>
                 </div>
+                <QrScanner onDetect={handleScanDetect} />
             </div>
         )
     }
@@ -234,12 +238,6 @@ export default function ItemPagina() {
                     <div className="text-4xl">❓</div>
                     <p className="text-text-primary font-semibold">Item niet gevonden</p>
                     <p className="text-text-muted text-sm">{fout}</p>
-                </div>
-            )}
-
-            {succes && (
-                <div className="bg-success/10 border border-success/30 rounded-xl px-4 py-3 text-success text-sm mb-4 flex items-center gap-2">
-                    <span>✓</span> {succes}
                 </div>
             )}
 
@@ -437,97 +435,12 @@ export default function ItemPagina() {
                         </div>
                     )}
 
-                    {(() => {
-                        const ctx = computeReserveringsContext(reserveringen, medewerker.id, workshopConflicten)
-
-                        if (ctx.scenario === 'eigen_reservering') return (
-                            <div className="rounded-xl p-4 border border-success/30 bg-success/10 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <CalendarCheck size={18} className="text-success" />
-                                    <p className="text-success text-sm font-semibold">Dit item staat voor jou gereserveerd</p>
-                                </div>
-                                <p className="text-success/80 text-xs">
-                                    {formatDatum(ctx.eigenReservering.van_datum)} t/m {formatDatum(ctx.eigenReservering.tot_datum)}
-                                    {ctx.eigenReservering.toelichting && ` — ${ctx.eigenReservering.toelichting}`}
-                                </p>
-                                <button
-                                    onClick={() => { setGekoppeldeReservering(ctx.eigenReservering); setStap(2) }}
-                                    className="btn-primary w-full py-2.5 mt-2"
-                                >
-                                    Ophalen voor reservering
-                                </button>
-                                <button
-                                    onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
-                                    className="text-text-muted text-xs underline w-full text-center mt-1"
-                                >
-                                    Liever ad-hoc meenemen
-                                </button>
-                            </div>
-                        )
-
-                        if (ctx.scenario === 'ad_hoc_conflict') return (
-                            <div className="rounded-xl p-4 border border-amber-500/40 bg-amber-500/10 space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <AlertTriangle size={18} className="text-amber-400" />
-                                    <p className="text-amber-400 text-sm font-semibold">
-                                        {ctx.eerstvolgendeAnders?.medewerker?.naam || 'Een collega'} heeft dit item gereserveerd
-                                    </p>
-                                </div>
-                                <p className="text-amber-400/80 text-xs">
-                                    Reservering begint op {formatDatum(ctx.eerstvolgendeAnders?.van_datum)}
-                                </p>
-                                <div className="bg-amber-500/10 rounded-lg p-3 flex items-center gap-2">
-                                    <Clock size={16} className="text-amber-300 flex-shrink-0" />
-                                    <p className="text-amber-300 text-sm font-semibold">
-                                        Breng terug voor: {formatDatum(ctx.terugbrengDeadline)}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
-                                    className="btn-primary w-full py-2.5 bg-amber-600 hover:bg-amber-700"
-                                >
-                                    Ik begrijp het, meenemen
-                                </button>
-                            </div>
-                        )
-
-                        // Scenario: ad_hoc_vrij
-                        const eersteWorkshop = workshopConflicten[0]
-                        const dagVerschil = eersteWorkshop
-                            ? Math.ceil((new Date(eersteWorkshop.datum + 'T00:00:00') - new Date()) / 86400000)
-                            : null
-                        return (
-                            <div className="space-y-3">
-                                {eersteWorkshop && (
-                                    <div className={`rounded-xl p-3 border flex items-start gap-2 ${dagVerschil <= 7 ? 'bg-error/10 border-error/30' : 'bg-amber-500/10 border-amber-500/40'}`}>
-                                        <CalendarDays size={15} className={`flex-shrink-0 mt-0.5 ${dagVerschil <= 7 ? 'text-error' : 'text-amber-400'}`} />
-                                        <div>
-                                            <p className={`text-xs font-semibold ${dagVerschil <= 7 ? 'text-error' : 'text-amber-400'}`}>
-                                                Gepland voor: {eersteWorkshop.titel}
-                                            </p>
-                                            <p className={`text-xs mt-0.5 ${dagVerschil <= 7 ? 'text-error/70' : 'text-amber-400/70'}`}>
-                                                {formatDatum(eersteWorkshop.datum)} · {eersteWorkshop.locatie}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="rounded-xl p-4 border border-overlay/10 bg-bg-hover space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <PackagePlus size={18} className="text-text-secondary" />
-                                        <p className="text-text-primary text-sm font-semibold">
-                                            {eersteWorkshop ? 'Geen reserveringen, wel workshop gepland' : 'Geen reserveringen — vrij beschikbaar'}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => { setGekoppeldeReservering(null); setStap(2) }}
-                                        className="btn-primary w-full py-2.5 mt-2"
-                                    >
-                                        Meenemen
-                                    </button>
-                                </div>
-                            </div>
-                        )
-                    })()}
+                    <MeenemenContextKaart
+                        context={computeReserveringsContext(reserveringen, medewerker.id, workshopConflicten)}
+                        workshops={workshopConflicten}
+                        bezig={pinLoading}
+                        onKies={bevestigMeenemen}
+                    />
                 </Modal>
             )}
 

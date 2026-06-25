@@ -87,7 +87,8 @@ export default function LoginPagina() {
                             <button
                                 type="button"
                                 onClick={() => setToonPin(!toonPin)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                                aria-label={toonPin ? 'Pincode verbergen' : 'Pincode tonen'}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 p-3 text-text-muted hover:text-text-secondary transition-colors"
                             >
                                 {toonPin ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>

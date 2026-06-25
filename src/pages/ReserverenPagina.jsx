@@ -10,6 +10,10 @@ import { getGeplandeWorkshopsVoorPeriode } from '../lib/geplandeWorkshops'
 import { checkConflicten } from '../lib/beschikbaarheid'
 import { LaadIndicator } from '../components/UI'
 import Modal from '../components/Modal'
+import BevestigModal from '../components/BevestigModal'
+import MateriaalSelect from '../components/MateriaalSelect'
+import { useToast } from '../context/ToastContext'
+import { foutTekst } from '../lib/foutmelding'
 import ConflictBanner, { BeschikbaarBanner } from '../components/ConflictBanner'
 import {
     ChevronLeft, ChevronRight, Plus, Calendar,
@@ -70,6 +74,7 @@ function kleurVoorItem(itemId, items) {
 
 export default function ReserverenPagina() {
     const { medewerker } = useAuth()
+    const toast = useToast()
     const [searchParams, setSearchParams] = useSearchParams()
     const [reserveringen, setReserveringen] = useState([])
     const [alleItems, setAlleItems] = useState([])
@@ -94,6 +99,10 @@ export default function ReserverenPagina() {
     const [conflicten, setConflicten] = useState(null) // null = nog niet gecheckt
     const [conflictLoading, setConflictLoading] = useState(false)
     const conflictTimer = useRef(null)
+
+    // Annuleer-bevestiging
+    const [annuleerDoel, setAnnuleerDoel] = useState(null)
+    const [annuleerBezig, setAnnuleerBezig] = useState(false)
 
     // Conflict check bij wijzigen materiaal/datum
     useEffect(() => {
@@ -219,21 +228,29 @@ export default function ReserverenPagina() {
             })
             setToonNieuw(false)
             setNieuwForm({ materiaalId: '', vanDatum: vandaagStr(), totDatum: vandaagStr(), toelichting: '' })
+            toast.succes('Reservering opgeslagen!')
             await laad()
         } catch (err) {
-            setNieuwFout(err.message || 'Opslaan mislukt')
+            setNieuwFout(foutTekst(err, 'Opslaan mislukt — probeer het opnieuw.'))
         } finally {
             setNieuwLoading(false)
         }
     }
 
-    // Annuleer reservering
-    const handleAnnuleer = async (r) => {
-        if (!confirm(`Reservering voor "${r.materiaal?.naam}" annuleren?`)) return
+    // Annuleer reservering (bevestiging via modal i.p.v. window.confirm)
+    const bevestigAnnuleer = async () => {
+        if (!annuleerDoel) return
+        setAnnuleerBezig(true)
         try {
-            await annuleerReservering(r.id, medewerker.id)
+            await annuleerReservering(annuleerDoel.id, medewerker.id)
+            toast.succes('Reservering geannuleerd')
+            setAnnuleerDoel(null)
             await laad()
-        } catch (err) { console.error(err) }
+        } catch (err) {
+            toast.fout(foutTekst(err, 'Annuleren lukte niet — probeer het opnieuw.'))
+        } finally {
+            setAnnuleerBezig(false)
+        }
     }
 
     // ICS download
@@ -391,7 +408,7 @@ export default function ReserverenPagina() {
                             reserveringen={geselecteerdeRes}
                             medewerker={medewerker}
                             alleItems={alleItems}
-                            onAnnuleer={handleAnnuleer}
+                            onAnnuleer={setAnnuleerDoel}
                         />
                     </div>
                 </>
@@ -414,7 +431,7 @@ export default function ReserverenPagina() {
                             reserveringen={mijnRes}
                             medewerker={medewerker}
                             alleItems={alleItems}
-                            onAnnuleer={handleAnnuleer}
+                            onAnnuleer={setAnnuleerDoel}
                             toonAnnuleer
                         />
                     )}
@@ -431,20 +448,16 @@ export default function ReserverenPagina() {
 
             {/* Nieuw reservering modal */}
             {toonNieuw && (
-                <Modal title="Nieuwe reservering" onClose={() => { setToonNieuw(false); setNieuwFout('') }} size="lg">
+                <Modal title="Nieuwe reservering" onClose={() => { setToonNieuw(false); setNieuwFout('') }} size="lg" sluitBijBackdrop={false}>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-text-secondary text-sm font-medium mb-2">Product *</label>
-                            <select
-                                className="input"
+                            <label className="block text-text-secondary text-sm font-medium mb-2">Materiaal *</label>
+                            <MateriaalSelect
+                                items={alleItems}
                                 value={nieuwForm.materiaalId}
-                                onChange={e => setNieuwForm(f => ({ ...f, materiaalId: e.target.value }))}
-                            >
-                                <option value="">Kies een product...</option>
-                                {alleItems.map(i => (
-                                    <option key={i.id} value={i.id}>{i.naam} — {i.type}</option>
-                                ))}
-                            </select>
+                                onChange={(id) => setNieuwForm(f => ({ ...f, materiaalId: id }))}
+                                placeholder="Zoek en kies materiaal..."
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
@@ -522,6 +535,20 @@ export default function ReserverenPagina() {
                         </button>
                     </div>
                 </Modal>
+            )}
+
+            {/* Annuleer-bevestiging */}
+            {annuleerDoel && (
+                <BevestigModal
+                    titel="Reservering annuleren"
+                    bericht={<>Weet je zeker dat je de reservering voor <strong className="text-text-primary">{annuleerDoel.materiaal?.naam || 'dit materiaal'}</strong> wilt annuleren?</>}
+                    bevestigLabel="Ja, annuleren"
+                    annuleerLabel="Nee, behouden"
+                    gevaarlijk
+                    loading={annuleerBezig}
+                    onBevestig={bevestigAnnuleer}
+                    onAnnuleer={() => setAnnuleerDoel(null)}
+                />
             )}
         </div>
     )
@@ -606,8 +633,9 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, to
                             {(toonAnnuleer || isMijn) && (
                                 <button
                                     onClick={() => onAnnuleer(r)}
-                                    className="p-2 text-text-muted hover:text-error transition-colors flex-shrink-0"
+                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-error transition-colors flex-shrink-0"
                                     title="Annuleer reservering"
+                                    aria-label="Reservering annuleren"
                                 >
                                     <Trash2 size={16} />
                                 </button>

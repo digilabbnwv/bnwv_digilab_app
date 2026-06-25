@@ -12,6 +12,7 @@ import MeldingenOverzicht from './pages/MeldingenOverzicht'
 import OnderhoudMelden from './pages/OnderhoudMelden'
 import ReserverenPagina from './pages/ReserverenPagina'
 import ProfielPagina from './pages/ProfielPagina'
+import HelpPagina from './pages/HelpPagina'
 import WorkshopCatalogus from './pages/WorkshopCatalogus'
 import WorkshopTemplateDetail from './pages/WorkshopTemplateDetail'
 import Kalender from './pages/Kalender'
@@ -107,6 +108,7 @@ export default function App() {
 
         {/* Profiel */}
         <Route path="/profiel" element={<ProtectedRoute><PageLayout><ProfielPagina /></PageLayout></ProtectedRoute>} />
+        <Route path="/help" element={<ProtectedRoute><PageLayout><HelpPagina /></PageLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

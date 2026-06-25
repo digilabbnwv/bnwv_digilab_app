@@ -6,6 +6,8 @@ import { LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
 import { verifyPin } from '../lib/auth'
+import { useToast } from '../context/ToastContext'
+import { foutTekst } from '../lib/foutmelding'
 import {
     Wrench, Plus, AlertTriangle, CheckCircle2, Package,
     ChevronRight, Clock, User
@@ -20,6 +22,7 @@ const TYPE_LABELS = {
 
 export default function MeldingenOverzicht() {
     const { medewerker } = useAuth()
+    const toast = useToast()
     const [meldingen, setMeldingen] = useState([])
     const [gefilterd, setGefilterd] = useState([])
     const [loading, setLoading] = useState(true)
@@ -62,9 +65,10 @@ export default function MeldingenOverzicht() {
             await verifyPin(medewerker.id, pin)
             await sluitMelding(sluitenMelding.id, medewerker.id)
             setSluitenMelding(null)
+            toast.succes('Melding afgerond')
             await laad()
         } catch (err) {
-            setPinFout(err.message || 'Onjuiste pincode')
+            setPinFout(foutTekst(err, 'Onjuiste pincode'))
         } finally {
             setPinLoading(false)
         }

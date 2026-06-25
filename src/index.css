@@ -11,7 +11,7 @@
     --color-bg-hover: 241 245 249;
     --color-text-primary: 15 23 42;
     --color-text-secondary: 71 85 105;
-    --color-text-muted: 148 163 184;
+    --color-text-muted: 100 116 139;
     --color-overlay: 0 0 0;
   }
 
@@ -21,7 +21,7 @@
     --color-bg-hover: 30 45 69;
     --color-text-primary: 234 240 255;
     --color-text-secondary: 154 168 199;
-    --color-text-muted: 100 116 139;
+    --color-text-muted: 124 139 162;
     --color-overlay: 255 255 255;
   }
 
@@ -160,7 +160,7 @@
 .bg-decoration::after {
   width: 350px;
   height: 350px;
-  background: rgba(245, 158, 11, 0.04);
+  background: rgba(124, 58, 237, 0.04);
   bottom: -80px;
   right: -80px;
 }
@@ -170,5 +170,5 @@
 }
 
 .dark .bg-decoration::after {
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(124, 58, 237, 0.08);
 }

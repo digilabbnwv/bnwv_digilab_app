@@ -16,8 +16,8 @@ module.exports = {
         'overlay':        'rgb(var(--color-overlay) / <alpha-value>)',
         'primary':        '#E8772E',
         'primary-end':    '#F5A623',
-        'accent':         '#F59E0B',
-        'accent-end':     '#FB923C',
+        'accent':         '#7C3AED',
+        'accent-end':     '#A855F7',
         'success':        '#10B981',
         'error':          '#EF4444',
       },
@@ -26,7 +26,7 @@ module.exports = {
       },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #E8772E, #F5A623)',
-        'gradient-accent':  'linear-gradient(135deg, #F59E0B, #FB923C)',
+        'gradient-accent':  'linear-gradient(135deg, #7C3AED, #A855F7)',
       },
     }
   },

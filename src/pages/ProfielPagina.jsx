@@ -7,7 +7,7 @@ import { DatumTijd, LaadIndicator } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
 import { useTheme } from '../context/ThemeContext'
-import { LogOut, User, Key, Clock, ChevronRight, Package, ArrowUpCircle, ArrowDownCircle, Sun, Monitor, Moon, Pencil, Check, X } from 'lucide-react'
+import { LogOut, User, Key, Clock, ChevronRight, Package, ArrowUpCircle, ArrowDownCircle, Sun, Monitor, Moon, Pencil, Check, X, HelpCircle } from 'lucide-react'
 
 export default function ProfielPagina() {
     const { medewerker, logout, updateMedewerker } = useAuth()
@@ -175,6 +175,17 @@ export default function ProfielPagina() {
 
             {/* Acties */}
             <div className="card mb-4 divide-y divide-overlay/10">
+                <button
+                    onClick={() => navigate('/help')}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-bg-hover transition-colors text-left"
+                >
+                    <span className="text-primary"><HelpCircle size={18} /></span>
+                    <div className="flex-1">
+                        <p className="text-text-primary font-medium text-sm">Hulp &amp; uitleg</p>
+                    </div>
+                    <ChevronRight size={16} className="text-text-muted" />
+                </button>
+
                 <button
                     onClick={() => { setToonPinWijzigen(true); setPinStap(1); setPinFout(''); setPinSucces(false) }}
                     className="w-full flex items-center gap-3 p-4 hover:bg-bg-hover transition-colors text-left"

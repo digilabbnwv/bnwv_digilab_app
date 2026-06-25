@@ -18,7 +18,14 @@ export default function PincodeInvoer({ onBevestig, label = 'Voer je 5-cijferige
             inputs.current[index + 1]?.focus()
         }
         if (nieuw.every(d => d !== '') && nieuw[4] !== '') {
-            setTimeout(() => onBevestig(nieuw.join('')), 100)
+            const code = nieuw.join('')
+            setTimeout(() => {
+                onBevestig(code)
+                // Veld leegmaken zodat een onjuiste pincode meteen opnieuw ingevoerd kan worden.
+                // (Bij succes sluit de modal en is dit onzichtbaar.)
+                setPin(['', '', '', '', ''])
+                inputs.current[0]?.focus()
+            }, 100)
         }
     }
 

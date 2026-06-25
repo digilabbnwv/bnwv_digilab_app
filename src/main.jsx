@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { ToastProvider } from './context/ToastContext'
 import { initMockDB } from './lib/mockDB'
 import './index.css'
 
@@ -20,7 +21,9 @@ async function start() {
       <ThemeProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <AuthProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>

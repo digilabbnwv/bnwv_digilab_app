@@ -1,7 +1,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
 
-export default function Modal({ title, children, onClose, size = 'md' }) {
+export default function Modal({ title, children, onClose, size = 'md', sluitBijBackdrop = true }) {
     const sizes = {
         sm: 'max-w-sm',
         md: 'max-w-md',
@@ -13,7 +13,7 @@ export default function Modal({ title, children, onClose, size = 'md' }) {
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={sluitBijBackdrop ? onClose : undefined}
             />
 
             {/* Modal */}
