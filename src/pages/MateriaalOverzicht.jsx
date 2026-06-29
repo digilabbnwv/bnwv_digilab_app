@@ -101,10 +101,10 @@ export default function MateriaalOverzicht() {
             </div>
 
             {/* Locatie filters */}
-            <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+            <div className="flex flex-wrap gap-2 mb-4">
                 <button
                     onClick={() => setLocatieFilter('alle')}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${locatieFilter === 'alle'
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${locatieFilter === 'alle'
                         ? 'bg-accent text-white shadow-lg shadow-accent/30'
                         : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
                         }`}
@@ -115,7 +115,7 @@ export default function MateriaalOverzicht() {
                     <button
                         key={loc}
                         onClick={() => setLocatieFilter(loc)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${locatieFilter === loc
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${locatieFilter === loc
                             ? 'bg-accent text-white shadow-lg shadow-accent/30'
                             : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
                             }`}
