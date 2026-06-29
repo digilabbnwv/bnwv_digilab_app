@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
 import { Search, CalendarDays, Plus, MapPin, ChevronLeft, ChevronRight, Clock, Users, List, Grid3X3, Wand2, User, Settings } from 'lucide-react'
 
-const LOCATIES = ['Ermelo', 'Nunspeet']
+const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 const STATUSSEN = [
     { key: 'alle', label: 'Alle' },
     { key: 'concept', label: 'Concept' },

@@ -14,9 +14,9 @@ import MeenemenContextKaart from '../components/MeenemenContextKaart'
 import QrScanner from '../components/QrScanner'
 import { useToast } from '../context/ToastContext'
 import { foutTekst } from '../lib/foutmelding'
-import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck } from 'lucide-react'
 
-const LOCATIES = ['Ermelo', 'Nunspeet']
+const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
 export default function ItemPagina() {
     const { qrCode } = useParams()
@@ -35,6 +35,8 @@ export default function ItemPagina() {
     const [reserveringen, setReserveringen] = useState([])
     const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
     const [workshopConflicten, setWorkshopConflicten] = useState([])
+    const [verzendRetour, setVerzendRetour] = useState(false)
+    const [verzendVertraging, setVerzendVertraging] = useState(1)
 
     // Scan modus: als qrCode === 'scan', open camera
     const isScanModus = qrCode === 'scan'
@@ -89,6 +91,8 @@ export default function ItemPagina() {
         setActie(null)
         setStap(1)
         setPinFout('')
+        setVerzendRetour(false)
+        setVerzendVertraging(1)
     }
 
     // Eigen/vrij meenemen → direct uitchecken (geen pincode).
@@ -149,7 +153,14 @@ export default function ItemPagina() {
         setPinLoading(true)
         try {
             await inchecken(item.id, medewerker.id, gekozenLocatie, item.huidige_locatie)
-            toast.succes(`Materiaal terug op ${gekozenLocatie}!`)
+            if (verzendRetour) {
+                const aankomst = new Date()
+                aankomst.setDate(aankomst.getDate() + verzendVertraging)
+                const aankomstStr = aankomst.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })
+                toast.succes(`Retour geregistreerd via vervoersdienst. Verwachte aankomst: ${aankomstStr}.`)
+            } else {
+                toast.succes(`Materiaal terug op ${gekozenLocatie}!`)
+            }
             sluitActie()
             laadItem(qrCode)
         } catch (err) {
@@ -508,6 +519,48 @@ export default function ItemPagina() {
                             </button>
                         ))}
                     </div>
+
+                    {/* Retour via vervoersdienst */}
+                    <button
+                        onClick={() => setVerzendRetour(v => !v)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all mb-4 ${verzendRetour
+                            ? 'border-accent bg-accent/10 text-accent'
+                            : 'border-overlay/20 text-text-muted hover:bg-bg-hover'
+                            }`}
+                    >
+                        <Truck size={18} className="flex-shrink-0" />
+                        <span className="text-sm font-medium">Retour via vervoersdienst</span>
+                        <span className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${verzendRetour ? 'border-accent bg-accent' : 'border-overlay/40'}`}>
+                            {verzendRetour && <span className="w-2 h-2 rounded-full bg-white block" />}
+                        </span>
+                    </button>
+
+                    {verzendRetour && (
+                        <div className="mb-4 p-3 bg-overlay/5 rounded-xl border border-overlay/10">
+                            <p className="text-text-muted text-xs mb-2">Verwachte aankomst</p>
+                            <div className="flex gap-2">
+                                {[1, 2].map(dagen => {
+                                    const d = new Date()
+                                    d.setDate(d.getDate() + dagen)
+                                    const label = d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+                                    return (
+                                        <button
+                                            key={dagen}
+                                            onClick={() => setVerzendVertraging(dagen)}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${verzendVertraging === dagen
+                                                ? 'border-accent bg-accent/10 text-accent'
+                                                : 'border-overlay/20 text-text-secondary hover:bg-bg-hover'
+                                                }`}
+                                        >
+                                            +{dagen} dag{dagen > 1 ? 'en' : ''}<br />
+                                            <span className="text-xs font-normal opacity-75">{label}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {isUitgechecktDoorCollega ? (
                         <button
                             onClick={handleOverruleTerugbrengen}

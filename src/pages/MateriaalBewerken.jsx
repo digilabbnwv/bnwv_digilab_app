@@ -9,7 +9,7 @@ const TYPES = [
     'Laptop', 'Tablet', 'Chromebook', 'Camera', 'Microfoon',
     'Beamer', 'Audioapparatuur', 'Kabel', 'Overig',
 ]
-const LOCATIES = ['Ermelo', 'Nunspeet']
+const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
 export default function MateriaalBewerken() {
     const { id } = useParams()

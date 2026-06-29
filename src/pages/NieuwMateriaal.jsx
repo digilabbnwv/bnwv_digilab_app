@@ -8,7 +8,7 @@ const TYPES = [
     'Laptop', 'Tablet', 'Chromebook', 'Camera', 'Microfoon',
     'Beamer', 'Audioapparatuur', 'Kabel', 'Overig',
 ]
-const LOCATIES = ['Ermelo', 'Nunspeet']
+const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
 const PREFIX_SUGGESTIES = {
     'Codeer-robot': 'ROBO',

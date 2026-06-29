@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
 import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode } from 'lucide-react'
 
-const LOCATIES = ['Ermelo', 'Nunspeet']
+const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
 export default function MateriaalOverzicht() {
     const { isBeheerder } = useAuth()
