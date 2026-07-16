@@ -4,7 +4,7 @@ import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
 import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
-import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode } from 'lucide-react'
+import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode, Tag, Settings } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
@@ -14,6 +14,7 @@ export default function MateriaalOverzicht() {
     const [zoekterm, setZoekterm] = useState('')
     const [statusFilter, setStatusFilter] = useState('alle')
     const [locatieFilter, setLocatieFilter] = useState('alle')
+    const [labelFilter, setLabelFilter] = useState('alle')
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -22,6 +23,12 @@ export default function MateriaalOverzicht() {
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [])
+
+    const beschikbareLabels = useMemo(() => {
+        const map = new Map()
+        items.forEach(i => (i.labels || []).forEach(l => map.set(l.id, l)))
+        return [...map.values()].sort((a, b) => a.naam.localeCompare(b.naam))
+    }, [items])
 
     const gefilterd = useMemo(() => {
         let res = items
@@ -42,8 +49,11 @@ export default function MateriaalOverzicht() {
                 i.huidige_locatie === locatieFilter || i.standaard_locatie === locatieFilter
             )
         }
+        if (labelFilter !== 'alle') {
+            res = res.filter(i => i.labels?.some(l => l.id === labelFilter))
+        }
         return res
-    }, [zoekterm, statusFilter, locatieFilter, items])
+    }, [zoekterm, statusFilter, locatieFilter, labelFilter, items])
 
     const statusKnoppen = [
         { key: 'alle', label: 'Alle' },
@@ -64,6 +74,15 @@ export default function MateriaalOverzicht() {
                     >
                         <QrCode size={16} /> Scan
                     </Link>
+                    {isBeheerder && (
+                        <Link
+                            to="/materiaal/labels"
+                            className="btn-ghost py-2 px-3 text-sm flex items-center gap-2"
+                            aria-label="Labels beheren"
+                        >
+                            <Settings size={16} /> Labels
+                        </Link>
+                    )}
                     {isBeheerder && (
                         <Link to="/materiaal/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
                             <Plus size={16} /> Nieuw
@@ -125,6 +144,34 @@ export default function MateriaalOverzicht() {
                 ))}
             </div>
 
+            {/* Label filters */}
+            {beschikbareLabels.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    <button
+                        onClick={() => setLabelFilter('alle')}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${labelFilter === 'alle'
+                            ? 'bg-bg-surface border border-primary text-primary'
+                            : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
+                            }`}
+                    >
+                        <Tag size={12} className="inline mr-1" />Alle labels
+                    </button>
+                    {beschikbareLabels.map(label => (
+                        <button
+                            key={label.id}
+                            onClick={() => setLabelFilter(label.id)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${labelFilter === label.id
+                                ? 'text-white shadow-lg'
+                                : 'bg-bg-surface border-overlay/10 text-text-muted hover:text-text-secondary'
+                                }`}
+                            style={labelFilter === label.id ? { backgroundColor: label.kleur || '#64748B', borderColor: label.kleur || '#64748B' } : undefined}
+                        >
+                            <Tag size={12} className="inline mr-1" />{label.naam}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {loading ? (
                 <LaadIndicator />
             ) : gefilterd.length === 0 ? (
@@ -159,6 +206,19 @@ export default function MateriaalOverzicht() {
                                             : <><MapPin size={11} /> {item.huidige_locatie || item.standaard_locatie || '—'}</>
                                         }
                                     </p>
+                                    {item.labels?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                            {item.labels.map(label => (
+                                                <span
+                                                    key={label.id}
+                                                    className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white"
+                                                    style={{ backgroundColor: label.kleur || '#64748B' }}
+                                                >
+                                                    {label.naam}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div className="mt-1">
                                         <BeschikbaarheidIndicator materiaalId={item.id} aantalDagen={7} compact />
                                     </div>

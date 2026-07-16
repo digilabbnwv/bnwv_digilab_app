@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMateriaalaItemById, updateMateriaal } from '../lib/materiaal'
+import { setLabelsVoorMateriaal } from '../lib/labels'
 import { ArrowLeft, Save, Tag } from 'lucide-react'
 import { LaadIndicator } from '../components/UI'
+import LabelMultiSelect from '../components/LabelMultiSelect'
 
 const TYPES = [
     'Codeer-robot', 'VR-set', 'Lasersnijder', '3D-printer',
@@ -25,6 +27,7 @@ export default function MateriaalBewerken() {
         standaard_locatie: '',
     })
     const [bestaandeCode, setBestaandeCode] = useState('')
+    const [labelIds, setLabelIds] = useState([])
     const [loading, setLoading] = useState(true)
     const [opslaan, setOpslaan] = useState(false)
     const [fout, setFout] = useState('')
@@ -44,6 +47,7 @@ export default function MateriaalBewerken() {
                     inhoud: item.inhoud || '',
                     standaard_locatie: item.standaard_locatie || '',
                 })
+                setLabelIds((item.labels || []).map(l => l.id))
             })
             .catch(() => setFout('Item niet gevonden'))
             .finally(() => setLoading(false))
@@ -69,6 +73,7 @@ export default function MateriaalBewerken() {
                 inhoud: form.inhoud.trim() || null,
                 standaard_locatie: form.standaard_locatie,
             })
+            await setLabelsVoorMateriaal(id, labelIds)
             setSucces(true)
             setTimeout(() => navigate(-1), 1200)
         } catch (err) {
@@ -178,6 +183,8 @@ export default function MateriaalBewerken() {
                             ))}
                         </div>
                     </div>
+
+                    <LabelMultiSelect selectedIds={labelIds} onChange={setLabelIds} disabled={opslaan} />
                 </div>
 
                 {/* Productcode (readonly) */}

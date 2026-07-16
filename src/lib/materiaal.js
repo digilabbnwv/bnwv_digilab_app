@@ -10,16 +10,21 @@ export { mockPreviewCode }
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
+function vlakLabels(item) {
+    if (!item) return item
+    return { ...item, labels: (item.materiaal_labels || []).map(ml => ml.label).filter(Boolean) }
+}
+
 export async function getMateriaalaItem(qrCode) {
     if (MOCK) return mockGetMateriaalByQR(qrCode)
 
     const { data, error } = await supabase
         .from('materiaal')
-        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, type_melding, status, tijdstip_gemeld)`)
+        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, type_melding, status, tijdstip_gemeld), materiaal_labels(label:labels(*))`)
         .eq('qr_code', qrCode)
         .single()
     if (error) throw error
-    return data
+    return vlakLabels(data)
 }
 
 export async function getMateriaalaItemById(id) {
@@ -27,11 +32,11 @@ export async function getMateriaalaItemById(id) {
 
     const { data, error } = await supabase
         .from('materiaal')
-        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, type_melding, status, tijdstip_gemeld)`)
+        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, type_melding, status, tijdstip_gemeld), materiaal_labels(label:labels(*))`)
         .eq('id', id)
         .single()
     if (error) throw error
-    return data
+    return vlakLabels(data)
 }
 
 export async function getAllMateriaal() {
@@ -39,10 +44,10 @@ export async function getAllMateriaal() {
 
     const { data, error } = await supabase
         .from('materiaal')
-        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, status)`)
+        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, status), materiaal_labels(label:labels(*))`)
         .order('naam')
     if (error) throw error
-    return data
+    return (data || []).map(vlakLabels)
 }
 
 export async function uitchecken(materiaalId, medewerkerId, medewerkernaam, reserveringId = null) {

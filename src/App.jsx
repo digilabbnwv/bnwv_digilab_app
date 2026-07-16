@@ -8,6 +8,7 @@ import ItemPagina from './pages/ItemPagina'
 import MateriaalOverzicht from './pages/MateriaalOverzicht'
 import NieuwMateriaal from './pages/NieuwMateriaal'
 import MateriaalBewerken from './pages/MateriaalBewerken'
+import LabelsBeheer from './pages/LabelsBeheer'
 import MeldingenOverzicht from './pages/MeldingenOverzicht'
 import OnderhoudMelden from './pages/OnderhoudMelden'
 import ReserverenPagina from './pages/ReserverenPagina'
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/materiaal" element={<ProtectedRoute><PageLayout><MateriaalOverzicht /></PageLayout></ProtectedRoute>} />
         <Route path="/materiaal/nieuw" element={<BeheerderRoute><PageLayout><NieuwMateriaal /></PageLayout></BeheerderRoute>} />
         <Route path="/materiaal/:id/bewerken" element={<BeheerderRoute><PageLayout><MateriaalBewerken /></PageLayout></BeheerderRoute>} />
+        <Route path="/materiaal/labels" element={<BeheerderRoute><PageLayout><LabelsBeheer /></PageLayout></BeheerderRoute>} />
 
         {/* Meldingen — overzicht eerst, dan nieuw formulier */}
         <Route path="/melding" element={<ProtectedRoute><PageLayout><MeldingenOverzicht /></PageLayout></ProtectedRoute>} />

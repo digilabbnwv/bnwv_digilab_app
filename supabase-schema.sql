@@ -34,6 +34,21 @@ CREATE TABLE IF NOT EXISTS materiaal (
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 2b. Labels tabel (vrij te beheren tags voor materiaal, bijv. Digitaal, Leesbevordering)
+CREATE TABLE IF NOT EXISTS labels (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  naam            TEXT NOT NULL UNIQUE,
+  kleur           TEXT,                             -- optionele hex-kleur voor de chip in de UI
+  aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2c. Koppeltabel materiaal <-> labels (many-to-many)
+CREATE TABLE IF NOT EXISTS materiaal_labels (
+  materiaal_id    UUID NOT NULL REFERENCES materiaal(id) ON DELETE CASCADE,
+  label_id        UUID NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (materiaal_id, label_id)
+);
+
 -- 3. Transacties tabel (auditlog)
 CREATE TABLE IF NOT EXISTS transacties (
   id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -138,6 +153,8 @@ CREATE TABLE IF NOT EXISTS rapportage_ontvangers (
 CREATE INDEX IF NOT EXISTS idx_materiaal_qr_code ON materiaal(qr_code);
 CREATE INDEX IF NOT EXISTS idx_materiaal_status ON materiaal(status);
 CREATE INDEX IF NOT EXISTS idx_materiaal_categorie ON materiaal(categorie_prefix);
+CREATE INDEX IF NOT EXISTS idx_materiaal_labels_materiaal ON materiaal_labels(materiaal_id);
+CREATE INDEX IF NOT EXISTS idx_materiaal_labels_label ON materiaal_labels(label_id);
 CREATE INDEX IF NOT EXISTS idx_transacties_materiaal_id ON transacties(materiaal_id);
 CREATE INDEX IF NOT EXISTS idx_transacties_medewerker_id ON transacties(medewerker_id);
 CREATE INDEX IF NOT EXISTS idx_onderhoud_materiaal_id ON onderhoudsmeldingen(materiaal_id);
@@ -156,6 +173,8 @@ CREATE INDEX IF NOT EXISTS idx_logins_medewerker_tijdstip ON logins(medewerker_i
 -- ============================================================
 ALTER TABLE medewerkers        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE materiaal          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE labels             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE materiaal_labels   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transacties        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onderhoudsmeldingen ENABLE ROW LEVEL SECURITY;
 
@@ -175,6 +194,12 @@ CREATE POLICY "Medewerker kan eigen record updaten" ON medewerkers
   FOR UPDATE USING (true);
 
 CREATE POLICY "Iedereen kan materiaal zien" ON materiaal
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan labels zien en beheren" ON labels
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan materiaal_labels zien en beheren" ON materiaal_labels
   FOR ALL USING (true);
 
 CREATE POLICY "Iedereen kan transacties zien en aanmaken" ON transacties

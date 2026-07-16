@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addMateriaal, mockPreviewCode } from '../lib/materiaal'
+import { setLabelsVoorMateriaal } from '../lib/labels'
+import LabelMultiSelect from '../components/LabelMultiSelect'
 import { ArrowLeft, Package, Tag, RefreshCw } from 'lucide-react'
 
 const TYPES = [
@@ -40,6 +42,7 @@ export default function NieuwMateriaal() {
         inhoud: '',
         standaard_locatie: '',
     })
+    const [labelIds, setLabelIds] = useState([])
     const [codePreview, setCodePreview] = useState('')
     const [prefixHandmatig, setPrefixHandmatig] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -94,6 +97,9 @@ export default function NieuwMateriaal() {
                 standaard_locatie: form.standaard_locatie,
                 huidige_locatie: form.standaard_locatie,
             })
+            if (labelIds.length > 0) {
+                await setLabelsVoorMateriaal(item.id, labelIds)
+            }
             navigate(`/item/${item.qr_code}`)
         } catch (err) {
             setFout(err.message || 'Opslaan mislukt')
@@ -192,6 +198,8 @@ export default function NieuwMateriaal() {
                             ))}
                         </div>
                     </div>
+
+                    <LabelMultiSelect selectedIds={labelIds} onChange={setLabelIds} disabled={loading} />
                 </div>
 
                 {/* BNWV Code */}

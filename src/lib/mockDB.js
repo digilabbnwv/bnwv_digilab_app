@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 8
+const DB_VERSION = 9
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -75,6 +75,8 @@ export async function initMockDB() {
 
     const med1Id = uuid()
     const med2Id = uuid()
+    const labelDigitaalId = uuid()
+    const labelLeesbevorderingId = uuid()
 
     // Helpers voor hergebruik
     const mat = (naam, merk, type, prefix, nr, locatie, aantal, omschrijving, inhoud, status = 'beschikbaar', medId = null) => ({
@@ -193,7 +195,33 @@ export async function initMockDB() {
         mat('xTool M1 Lasersnijder — Nunspeet', 'xTool', 'Lasersnijder', 'LASR', 2, 'Nunspeet', 1,
             'xTool M1 is een hybride lasersnijder/diodelasergraveermachine. Snijdt en graveert op hout, leer, acryl en meer. Let op: gebruik altijd ventilatie.',
             '1x xTool M1 machine, 1x lasermodule (10W), 1x ventilatiesysteem, 1x materiaalenset (testmaterialen), stroomkabel, USB-kabel, handleiding, veiligheidsbril'),
+
+        // ── Theaterlezen Leskisten (Leesbevordering) ─────────────────────────
+        mat('Theaterlezen Leskist 3-1 (begin)', null, 'Leskist', 'LEES', 1, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 3, beginfase.', null),
+        mat('Theaterlezen Leskist 3-2 (eind)', null, 'Leskist', 'LEES', 2, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 3, eindfase.', null),
+        mat('Theaterlezen Leskist 4-1 (begin)', null, 'Leskist', 'LEES', 3, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 4, beginfase.', null),
+        mat('Theaterlezen Leskist 4-2 (midden)', null, 'Leskist', 'LEES', 4, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 4, middenfase.', null),
+        mat('Theaterlezen Leskist 4-3 (eind)', null, 'Leskist', 'LEES', 5, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 4, eindfase.', null),
+        mat('Theaterlezen Leskist 5-1 (begin)', null, 'Leskist', 'LEES', 6, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 5, beginfase.', null),
+        mat('Theaterlezen Leskist 5-2 (midden/eind)', null, 'Leskist', 'LEES', 7, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 5, midden/eindfase.', null),
+        mat('Theaterlezen Leskist 6-1', null, 'Leskist', 'LEES', 8, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 6.', null),
+        mat('Theaterlezen Leskist 6-2', null, 'Leskist', 'LEES', 9, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 6.', null),
+        mat('Theaterlezen Leskist 6-3', null, 'Leskist', 'LEES', 10, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 6.', null),
+        mat('Theaterlezen Leskist 7-1', null, 'Leskist', 'LEES', 11, 'Nunspeet', 1,
+            'Leskist Theaterlezen voor groep 7.', null),
     ]
+
+    const theaterlezenItems = materiaalItems.slice(-11)
 
     // Sla referenties op voor gebruik in andere tabellen
     const spheroIndiErm = materiaalItems[0]
@@ -278,6 +306,16 @@ export async function initMockDB() {
             { id: med2Id, naam: 'Lisa van den Berg', email: 'lisa@bibliotheek.nl', pincode_hash: pinHash2, rol: 'medewerker', aangemaakt_op: new Date().toISOString() },
         ],
         materiaal: materiaalItems,
+        labels: [
+            { id: labelDigitaalId, naam: 'Digitaal', kleur: '#E8772E', aangemaakt_op: new Date().toISOString() },
+            { id: labelLeesbevorderingId, naam: 'Leesbevordering', kleur: '#F59E0B', aangemaakt_op: new Date().toISOString() },
+        ],
+        materiaal_labels: [
+            ...materiaalItems
+                .filter(m => !theaterlezenItems.includes(m))
+                .map(m => ({ materiaal_id: m.id, label_id: labelDigitaalId })),
+            ...theaterlezenItems.map(m => ({ materiaal_id: m.id, label_id: labelLeesbevorderingId })),
+        ],
         transacties: [
             {
                 id: uuid(), materiaal_id: spheroIndiErm.id, medewerker_id: med2Id,
@@ -451,6 +489,14 @@ export async function mockUpdateNaam(medewerker_id, naam) {
 
 // ── Materiaal mock functies ─────────────────────────────────────
 
+function getLabelsVoorMateriaal(materiaalId, db) {
+    if (!db.labels || !db.materiaal_labels) return []
+    return db.materiaal_labels
+        .filter(ml => ml.materiaal_id === materiaalId)
+        .map(ml => db.labels.find(l => l.id === ml.label_id))
+        .filter(Boolean)
+}
+
 function enrichMateriaal(item, db) {
     const med = db.medewerkers.find(m => m.id === item.huidige_medewerker_id)
     const meldingen = db.onderhoudsmeldingen.filter(o => o.materiaal_id === item.id)
@@ -458,6 +504,7 @@ function enrichMateriaal(item, db) {
         ...item,
         huidige_medewerker: med ? { id: med.id, naam: med.naam } : null,
         onderhoudsmeldingen: meldingen,
+        labels: getLabelsVoorMateriaal(item.id, db),
     }
 }
 
@@ -477,14 +524,9 @@ export function mockGetMateriaalById(id) {
 
 export function mockGetAllMateriaal() {
     const db = getDB()
-    return db.materiaal.map(item => {
-        const med = db.medewerkers.find(m => m.id === item.huidige_medewerker_id)
-        return {
-            ...item,
-            huidige_medewerker: med ? { id: med.id, naam: med.naam } : null,
-            onderhoudsmeldingen: db.onderhoudsmeldingen.filter(o => o.materiaal_id === item.id),
-        }
-    }).sort((a, b) => a.naam.localeCompare(b.naam))
+    return db.materiaal
+        .map(item => enrichMateriaal(item, db))
+        .sort((a, b) => a.naam.localeCompare(b.naam))
 }
 
 export function mockUitchecken(materiaalId, medewerkerId, medewerkernaam, reserveringId = null) {
@@ -611,6 +653,58 @@ export function mockGetTransacties(materiaalId) {
             return { ...t, medewerker: med ? { naam: med.naam } : null }
         })
         .sort((a, b) => new Date(b.tijdstip) - new Date(a.tijdstip))
+}
+
+// ── Labels mock functies ─────────────────────────────────────────
+
+export function mockGetAllLabels() {
+    const db = getDB()
+    if (!db.labels) return []
+    return [...db.labels].sort((a, b) => a.naam.localeCompare(b.naam))
+}
+
+export function mockAddLabel({ naam, kleur }) {
+    const db = getDB()
+    if (!db.labels) db.labels = []
+    if (db.labels.find(l => l.naam.toLowerCase() === naam.toLowerCase())) {
+        throw { code: '23505', message: 'Dit label bestaat al' }
+    }
+    const nieuw = { id: uuid(), naam, kleur: kleur || null, aangemaakt_op: new Date().toISOString() }
+    db.labels.push(nieuw)
+    saveDB(db)
+    return nieuw
+}
+
+export function mockUpdateLabel(id, updates) {
+    const db = getDB()
+    const idx = db.labels.findIndex(l => l.id === id)
+    if (idx === -1) throw new Error('Label niet gevonden')
+    db.labels[idx] = { ...db.labels[idx], ...updates }
+    saveDB(db)
+    return db.labels[idx]
+}
+
+export function mockDeleteLabel(id) {
+    const db = getDB()
+    db.labels = (db.labels || []).filter(l => l.id !== id)
+    db.materiaal_labels = (db.materiaal_labels || []).filter(ml => ml.label_id !== id)
+    saveDB(db)
+}
+
+export function mockGetLabelsVoorMateriaal(materiaalId) {
+    const db = getDB()
+    return getLabelsVoorMateriaal(materiaalId, db)
+}
+
+export function mockSetLabelsVoorMateriaal(materiaalId, labelIds) {
+    const db = getDB()
+    if (!db.materiaal_labels) db.materiaal_labels = []
+    db.materiaal_labels = db.materiaal_labels.filter(ml => ml.materiaal_id !== materiaalId)
+    labelIds.forEach(labelId => {
+        db.materiaal_labels.push({ materiaal_id: materiaalId, label_id: labelId })
+    })
+    saveDB(db)
+    return getLabelsVoorMateriaal(materiaalId, db)
 }
 
 // ── Onderhoud mock functies ─────────────────────────────────────
