@@ -117,6 +117,21 @@ CREATE TABLE IF NOT EXISTS geplande_workshops (
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 8. Logins tabel (auditlog voor inlog-metrics)
+CREATE TABLE IF NOT EXISTS logins (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  medewerker_id   UUID NOT NULL REFERENCES medewerkers(id) ON DELETE CASCADE,
+  tijdstip        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. Rapportage-ontvangers (voor de periodieke metrics-e-mail)
+CREATE TABLE IF NOT EXISTS rapportage_ontvangers (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email           TEXT NOT NULL UNIQUE,
+  actief          BOOLEAN NOT NULL DEFAULT true,
+  toegevoegd_op   TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- Indexen voor performance
 -- ============================================================
@@ -134,6 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_geplande_workshops_datum ON geplande_workshops(da
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_status ON geplande_workshops(status);
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_locatie ON geplande_workshops(locatie);
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_materiaal ON geplande_workshops USING GIN (materiaal_ids);
+CREATE INDEX IF NOT EXISTS idx_logins_medewerker_tijdstip ON logins(medewerker_id, tijdstip);
 
 -- ============================================================
 -- Row Level Security (RLS) — Eenvoudig: alle medewerkers mogen alles
@@ -145,6 +161,8 @@ ALTER TABLE onderhoudsmeldingen ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE workshop_templates  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE geplande_workshops  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE logins              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rapportage_ontvangers ENABLE ROW LEVEL SECURITY;
 
 -- Iedereen mag lezen; schrijven beperkt tot beheerders in de app-laag
 CREATE POLICY "Iedereen kan medewerkers zien" ON medewerkers
@@ -171,11 +189,69 @@ CREATE POLICY "Iedereen kan workshop templates zien en beheren" ON workshop_temp
 CREATE POLICY "Iedereen kan geplande workshops zien en beheren" ON geplande_workshops
   FOR ALL USING (true);
 
+CREATE POLICY "Iedereen kan logins zien en aanmaken" ON logins
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan rapportage ontvangers zien en beheren" ON rapportage_ontvangers
+  FOR ALL USING (true);
+
 -- ============================================================
 -- Supabase Storage bucket voor foto's
 -- ============================================================
 -- Maak een nieuwe bucket aan genaamd 'fotos' in Supabase Storage (Dashboard > Storage)
 -- Stel de bucket in als public zodat foto URLs toegankelijk zijn.
+
+-- ============================================================
+-- Periodieke metrics-rapportage (pg_cron + pg_net)
+-- ============================================================
+-- Voer dit blok handmatig uit in de Supabase SQL Editor (niet automatisch via dit
+-- script, want het bevat project-specifieke waarden).
+--
+-- De Edge Function metrics-rapportage is bewust gedeployed MET actieve
+-- JWT-verificatie (Supabase-default, niet met --no-verify-jwt). pg_net stuurt
+-- daarom naast de eigen 'x-digilab-secret'-header ook een 'Authorization: Bearer
+-- <anon-key>'-header mee, zodat de aanroep de platform-brede JWT-check haalt.
+-- De anon-key is een publieke sleutel (dezelfde als VITE_SUPABASE_ANON_KEY in de
+-- frontend, zie agents.md) — dus prima direct in dit script, geen Vault nodig.
+-- De 'x-digilab-secret'-waarde (METRICS_REPORT_SECRET) is wél een echt geheim en
+-- hoort daarom via Supabase Vault, nooit als plain string in dit bestand.
+--
+-- Stap 1 — extensies inschakelen:
+--   CREATE EXTENSION IF NOT EXISTS pg_cron;
+--   CREATE EXTENSION IF NOT EXISTS pg_net;
+--
+-- Stap 2 — secret opslaan in Supabase Vault (waarde moet gelijk zijn aan de
+-- Edge Function secret METRICS_REPORT_SECRET, zie supabase/functions/metrics-rapportage):
+--   SELECT vault.create_secret('<vul-hier-dezelfde-waarde-in-als-METRICS_REPORT_SECRET>', 'metrics_report_secret');
+--
+-- Stap 3 — vervang <project-ref> en <anon-key> hieronder door je eigen waarden
+-- (Project Settings > API) en registreer de twee cron-jobs:
+--
+--   SELECT cron.schedule('digilab-metrics-wekelijks', '0 6 * * 1', $$
+--     SELECT net.http_post(
+--       url := 'https://<project-ref>.supabase.co/functions/v1/metrics-rapportage?type=wekelijks',
+--       headers := jsonb_build_object(
+--         'Content-Type', 'application/json',
+--         'Authorization', 'Bearer <anon-key>',
+--         'x-digilab-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'metrics_report_secret')
+--       ),
+--       body := '{}'::jsonb
+--     );
+--   $$);
+--
+--   SELECT cron.schedule('digilab-metrics-maandelijks', '0 6 1 * *', $$
+--     SELECT net.http_post(
+--       url := 'https://<project-ref>.supabase.co/functions/v1/metrics-rapportage?type=maandelijks',
+--       headers := jsonb_build_object(
+--         'Content-Type', 'application/json',
+--         'Authorization', 'Bearer <anon-key>',
+--         'x-digilab-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'metrics_report_secret')
+--       ),
+--       body := '{}'::jsonb
+--     );
+--   $$);
+--
+-- Controleren: SELECT * FROM cron.job; en SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 5;
 
 -- ============================================================
 -- Testdata (optioneel — verwijder in productie)

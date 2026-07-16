@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import {
     mockRegistreer, mockInloggen, mockVerifyPin, mockUpdatePincode, mockUpdateNaam
 } from './mockDB'
+import { logLogin } from './logins'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
@@ -51,6 +52,7 @@ export async function inloggen({ email, pincode }) {
         .single()
 
     if (error || !data) throw new Error('Onjuist e-mailadres of pincode')
+    logLogin(data.id)
     return data
 }
 

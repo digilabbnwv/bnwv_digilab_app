@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 7
+const DB_VERSION = 8
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -324,6 +324,7 @@ export async function initMockDB() {
                 status: 'actief', aangemaakt_op: new Date().toISOString(),
             },
         ],
+        logins: [],
         workshop_templates: workshopTemplates,
         geplande_workshops: [
             {
@@ -413,7 +414,14 @@ export async function mockInloggen({ email, pincode }) {
     const pincode_hash = await hashPin(pincode)
     const med = db.medewerkers.find(m => m.email === email && m.pincode_hash === pincode_hash)
     if (!med) throw new Error('Onjuist e-mailadres of pincode')
+    mockLogLogin(med.id)
     return med
+}
+
+export function mockLogLogin(medewerker_id) {
+    const db = getDB()
+    db.logins.push({ id: uuid(), medewerker_id, tijdstip: new Date().toISOString() })
+    saveDB(db)
 }
 
 export async function mockVerifyPin(medewerker_id, pincode) {

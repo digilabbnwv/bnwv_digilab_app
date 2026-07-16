@@ -46,7 +46,9 @@ Het bouwen van een robuust, veilig en gebruiksvriendelijk systeem voor materiaal
 ## 📂 Belangrijke Bestanden
 - `src/lib/reserveringen.js`: Core logica reserveringen.
 - `src/lib/agendaSync.js`: Frontend trigger voor Outlook sync.
+- `src/lib/logins.js`: Registreert inlog-momenten (voor de metrics-rapportage).
 - `supabase/functions/agenda-sync/index.ts`: De beveiligde brug naar Power Automate.
+- `supabase/functions/metrics-rapportage/index.ts`: Periodieke (wekelijks/maandelijks) metrics-e-mail, getriggerd door pg_cron. Secrets: `METRICS_REPORT_SECRET` (inbound), `WEBHOOK_URL_METRICS` (outbound naar Power Automate). Ontvangers worden beheerd in de tabel `rapportage_ontvangers`.
 - `playwright.config.js`: Specifieke Windows-vs-Linux setup voor E2E tests.
 
 *Let's build something great.*
