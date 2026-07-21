@@ -102,7 +102,7 @@ export default function MateriaalKaartPrint() {
             `}</style>
 
             <div className="kaart-toolbar no-print">
-                <Link to={`/item/${item.qr_code}`} className="btn-ghost py-2 px-4 text-sm flex items-center gap-1.5">
+                <Link to={`/item/${item.qr_code}`} replace className="btn-ghost py-2 px-4 text-sm flex items-center gap-1.5">
                     <ArrowLeft size={15} /> Terug
                 </Link>
                 <button onClick={() => window.print()} className="btn-primary py-2 px-5 text-sm flex items-center gap-2">
