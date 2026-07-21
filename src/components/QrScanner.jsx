@@ -1,31 +1,37 @@
 import React, { useEffect, useRef, useState } from 'react'
+import jsQR from 'jsqr'
 import { QrCode, CameraOff } from 'lucide-react'
 
 /**
- * In-app QR-scanner op basis van de native BarcodeDetector-API.
- * Valt netjes terug op een instructie wanneer het toestel/de browser de API
- * niet ondersteunt of cameratoegang weigert — zo werkt het overal zonder regressie.
+ * In-app QR-scanner. Gebruikt de native BarcodeDetector-API waar beschikbaar
+ * (Chrome/Edge/Samsung Internet op Android), en valt anders terug op jsQR
+ * (canvas-gebaseerd, werkt ook in Firefox en iOS Safari — die BarcodeDetector
+ * niet ondersteunen). Alleen als getUserMedia zelf ontbreekt of geweigerd wordt
+ * tonen we de instructie om de camera-app te gebruiken.
  *
  * @param {(waarde:string) => void} onDetect - aangeroepen met de gescande ruwe waarde
  */
 export default function QrScanner({ onDetect }) {
     const videoRef = useRef(null)
+    const canvasRef = useRef(null)
     const streamRef = useRef(null)
     const detectRef = useRef(onDetect)
     const gevondenRef = useRef(false)
     // init | scanning | unsupported | denied | error
     const [status, setStatus] = useState(
-        () => (typeof window !== 'undefined' && 'BarcodeDetector' in window) ? 'init' : 'unsupported'
+        () => (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) ? 'init' : 'unsupported'
     )
 
     useEffect(() => { detectRef.current = onDetect }, [onDetect])
 
     useEffect(() => {
-        if (typeof window === 'undefined' || !('BarcodeDetector' in window)) return
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
 
         let cancelled = false
         let timer = null
-        let detector
+        const barcodeDetector = (typeof window !== 'undefined' && 'BarcodeDetector' in window)
+            ? new window.BarcodeDetector({ formats: ['qr_code'] })
+            : null
 
         const stop = () => {
             cancelled = true
@@ -36,9 +42,26 @@ export default function QrScanner({ onDetect }) {
             }
         }
 
+        const decodeMetBarcodeDetector = async () => {
+            const codes = await barcodeDetector.detect(videoRef.current)
+            return codes?.[0]?.rawValue ?? null
+        }
+
+        const decodeMetJsQR = () => {
+            const video = videoRef.current
+            if (!video || !video.videoWidth) return null
+            const canvas = canvasRef.current
+            canvas.width = video.videoWidth
+            canvas.height = video.videoHeight
+            const ctx = canvas.getContext('2d', { willReadFrequently: true })
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+            const frame = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            const code = jsQR(frame.data, frame.width, frame.height)
+            return code?.data ?? null
+        }
+
         const start = async () => {
             try {
-                detector = new window.BarcodeDetector({ formats: ['qr_code'] })
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
                 if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
                 streamRef.current = stream
@@ -57,14 +80,14 @@ export default function QrScanner({ onDetect }) {
         const scan = async () => {
             if (cancelled || gevondenRef.current || !videoRef.current) return
             try {
-                const codes = await detector.detect(videoRef.current)
-                if (codes && codes.length) {
+                const waarde = barcodeDetector ? await decodeMetBarcodeDetector() : decodeMetJsQR()
+                if (waarde) {
                     gevondenRef.current = true
-                    detectRef.current?.(codes[0].rawValue)
+                    detectRef.current?.(waarde)
                     return
                 }
             } catch { /* enkel-frame fout negeren, volgende poging */ }
-            timer = setTimeout(scan, 300)
+            timer = setTimeout(scan, 250)
         }
 
         start()
@@ -76,6 +99,7 @@ export default function QrScanner({ onDetect }) {
             <div className="space-y-4">
                 <div className="relative rounded-2xl overflow-hidden bg-black aspect-square">
                     <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+                    <canvas ref={canvasRef} className="hidden" />
                     {/* Richtkader */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="w-2/3 aspect-square border-2 border-white/80 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
@@ -88,7 +112,7 @@ export default function QrScanner({ onDetect }) {
         )
     }
 
-    // Fallback: API niet ondersteund, geweigerd of fout
+    // Fallback: camera-API niet beschikbaar, toegang geweigerd, of fout
     return (
         <div className="card p-8 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-bg-hover flex items-center justify-center mx-auto">
