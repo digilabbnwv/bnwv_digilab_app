@@ -14,7 +14,7 @@ import MeenemenContextKaart from '../components/MeenemenContextKaart'
 import QrScanner from '../components/QrScanner'
 import { useToast } from '../context/ToastContext'
 import { foutTekst } from '../lib/foutmelding'
-import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck, Printer } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
@@ -232,13 +232,24 @@ export default function ItemPagina() {
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-muted hover:text-text-secondary transition-colors">
                     <ArrowLeft size={18} /> Terug
                 </button>
-                {isBeheerder && item && (
-                    <Link
-                        to={`/materiaal/${item.id}/bewerken`}
-                        className="btn-accent py-1.5 px-3 text-sm flex items-center gap-1.5"
-                    >
-                        <Pencil size={14} /> Bewerken
-                    </Link>
+                {item && (
+                    <div className="flex items-center gap-2">
+                        <Link
+                            to={`/materiaal/${item.id}/kaart`}
+                            target="_blank"
+                            className="btn-ghost py-1.5 px-3 text-sm flex items-center gap-1.5"
+                        >
+                            <Printer size={14} /> Kaartje printen
+                        </Link>
+                        {isBeheerder && (
+                            <Link
+                                to={`/materiaal/${item.id}/bewerken`}
+                                className="btn-accent py-1.5 px-3 text-sm flex items-center gap-1.5"
+                            >
+                                <Pencil size={14} /> Bewerken
+                            </Link>
+                        )}
+                    </div>
                 )}
             </div>
 

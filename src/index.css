@@ -172,3 +172,21 @@
 .dark .bg-decoration::after {
   background: rgba(124, 58, 237, 0.08);
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Decoratieve achtergrond-blur en de min-height:100dvh van body/.bg-decoration
+     geven anders een waas over de afdruk en tellen mee als extra lege pagina's. */
+  .bg-decoration::before,
+  .bg-decoration::after {
+    display: none !important;
+  }
+
+  html, body, .bg-decoration {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+}

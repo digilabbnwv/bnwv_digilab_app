@@ -8,6 +8,7 @@ import ItemPagina from './pages/ItemPagina'
 import MateriaalOverzicht from './pages/MateriaalOverzicht'
 import NieuwMateriaal from './pages/NieuwMateriaal'
 import MateriaalBewerken from './pages/MateriaalBewerken'
+import MateriaalKaartPrint from './pages/MateriaalKaartPrint'
 import LabelsBeheer from './pages/LabelsBeheer'
 import MeldingenOverzicht from './pages/MeldingenOverzicht'
 import OnderhoudMelden from './pages/OnderhoudMelden'
@@ -27,7 +28,7 @@ const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 function MockBanner() {
   if (!MOCK) return null
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white text-xs font-bold text-center py-1 tracking-wide">
+    <div className="no-print fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white text-xs font-bold text-center py-1 tracking-wide">
       🧪 TESTMODUS — data in localStorage, geen Supabase
     </div>
   )
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="/materiaal" element={<ProtectedRoute><PageLayout><MateriaalOverzicht /></PageLayout></ProtectedRoute>} />
         <Route path="/materiaal/nieuw" element={<BeheerderRoute><PageLayout><NieuwMateriaal /></PageLayout></BeheerderRoute>} />
         <Route path="/materiaal/:id/bewerken" element={<BeheerderRoute><PageLayout><MateriaalBewerken /></PageLayout></BeheerderRoute>} />
+        <Route path="/materiaal/:id/kaart" element={<ProtectedRoute><MateriaalKaartPrint /></ProtectedRoute>} />
         <Route path="/materiaal/labels" element={<BeheerderRoute><PageLayout><LabelsBeheer /></PageLayout></BeheerderRoute>} />
 
         {/* Meldingen — overzicht eerst, dan nieuw formulier */}
