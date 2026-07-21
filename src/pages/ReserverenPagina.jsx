@@ -129,6 +129,7 @@ export default function ReserverenPagina() {
     const heeftWorkshopConflict = conflicten?.conflicten?.some(c => c.type === 'workshop') || false
 
     const [workshopsVoorMaand, setWorkshopsVoorMaand] = useState([])
+    const [workshops12Maanden, setWorkshops12Maanden] = useState([])
 
     const laad = useCallback(async () => {
         setLoading(true)
@@ -154,6 +155,17 @@ export default function ReserverenPagina() {
             .then(ws => setWorkshopsVoorMaand(ws.filter(w => w.status !== 'geannuleerd' && (w.materiaal_ids?.length > 0))))
             .catch(console.error)
     }, [jaar, maand])
+
+    // Laad workshops voor de komende 12 maanden (voor de "Alle" lijstweergave)
+    useEffect(() => {
+        const van = vandaagStr()
+        const eindDatum = new Date()
+        eindDatum.setMonth(eindDatum.getMonth() + 12)
+        const tot = eindDatum.toISOString().slice(0, 10)
+        getGeplandeWorkshopsVoorPeriode(van, tot)
+            .then(ws => setWorkshops12Maanden(ws.filter(w => w.status !== 'geannuleerd' && (w.materiaal_ids?.length > 0))))
+            .catch(console.error)
+    }, [])
 
     // Open nieuw-reservering modal via URL param
     useEffect(() => {
@@ -193,6 +205,32 @@ export default function ReserverenPagina() {
 
     // Mijn reserveringen
     const mijnRes = reserveringen.filter(r => r.medewerker?.id === medewerker.id)
+
+    // Alle reserveringen + workshops voor de komende 12 maanden, gegroepeerd per maand
+    const twaalfMaandenTot = (() => {
+        const d = new Date()
+        d.setMonth(d.getMonth() + 12)
+        return d.toISOString().slice(0, 10)
+    })()
+    const alleKomende12Maanden = [
+        ...reserveringen.filter(r => r.van_datum <= twaalfMaandenTot),
+        ...workshops12Maanden.map(w => ({ ...w, _isWorkshop: true })),
+    ].sort((a, b) => (a.van_datum || a.datum).localeCompare(b.van_datum || b.datum))
+
+    const alleGroepenPerMaand = (() => {
+        const groepen = []
+        alleKomende12Maanden.forEach(item => {
+            const [j, m] = (item.van_datum || item.datum).split('-')
+            const label = `${MAANDEN[parseInt(m, 10) - 1]} ${j}`
+            let groep = groepen[groepen.length - 1]
+            if (!groep || groep.label !== label) {
+                groep = { label, items: [] }
+                groepen.push(groep)
+            }
+            groep.items.push(item)
+        })
+        return groepen
+    })()
 
     const vorigeMaand = () => {
         if (maand === 0) { setMaand(11); setJaar(j => j - 1) }
@@ -280,6 +318,7 @@ export default function ReserverenPagina() {
                 {[
                     { key: 'kalender', label: '📅 Kalender' },
                     { key: 'mijn', label: `👤 Mijn (${mijnRes.length})` },
+                    { key: 'alle', label: `📋 Alle (${alleKomende12Maanden.length})` },
                 ].map(({ key, label }) => (
                     <button
                         key={key}
@@ -412,6 +451,33 @@ export default function ReserverenPagina() {
                         />
                     </div>
                 </>
+            ) : tab === 'alle' ? (
+                /* Alle reserveringen — lijstweergave komende 12 maanden */
+                <div>
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
+                        Alle reserveringen — komende 12 maanden
+                    </p>
+                    {alleGroepenPerMaand.length === 0 ? (
+                        <div className="card p-8 text-center">
+                            <Calendar size={32} className="mx-auto mb-3 text-text-muted opacity-30" />
+                            <p className="text-text-muted text-sm">Geen reserveringen in de komende 12 maanden</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-5">
+                            {alleGroepenPerMaand.map(groep => (
+                                <div key={groep.label}>
+                                    <p className="text-sm font-semibold text-text-secondary mb-2">{groep.label}</p>
+                                    <ReserveringLijst
+                                        reserveringen={groep.items}
+                                        medewerker={medewerker}
+                                        alleItems={alleItems}
+                                        onAnnuleer={setAnnuleerDoel}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             ) : (
                 /* Mijn reserveringen tab */
                 <div>
