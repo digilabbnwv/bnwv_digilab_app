@@ -91,7 +91,7 @@ export default function MateriaalKaartPrint() {
                     @page { size: 150mm 150mm; margin: 0; }
                     html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
                     .kaart-pagina { padding: 0; gap: 0; background: #fff; min-height: 0; }
-                    .kaart { box-shadow: none; border-radius: 0; }
+                    .kaart { box-shadow: none; border-radius: 0; border: 0.3mm solid #cbd5e1; }
                 }
             `}</style>
 
