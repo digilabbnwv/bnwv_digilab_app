@@ -6,9 +6,9 @@ import { LaadIndicator } from '../components/UI'
 import { Printer, ArrowLeft } from 'lucide-react'
 
 /**
- * Printbare A6-kaart (landschap) voor op de fysieke opslagbox van een materiaal-item.
+ * Printbare 150x150mm kaart voor op de fysieke opslagbox van een materiaal-item.
  * Opent als losse pagina (geen app-chrome) zodat 'm print-only stylesheet de pagina
- * exact op A6-formaat kan zetten via @page.
+ * exact op formaat kan zetten via @page.
  */
 export default function MateriaalKaartPrint() {
     const { id } = useParams()
@@ -54,47 +54,47 @@ export default function MateriaalKaartPrint() {
                 }
                 .kaart-toolbar { display: flex; align-items: center; gap: 12px; }
                 .kaart {
-                    width: 148mm; height: 105mm; background: #ffffff; color: #0f172a;
-                    box-shadow: 0 4px 24px rgba(0,0,0,0.15); border-radius: 4mm;
-                    padding: 6mm; box-sizing: border-box; display: flex; gap: 5mm; flex-shrink: 0;
+                    width: 150mm; height: 150mm; background: #ffffff; color: #0f172a;
+                    box-shadow: 0 4px 24px rgba(0,0,0,0.15); border-radius: 6mm;
+                    padding: 8mm; box-sizing: border-box; display: flex; gap: 6mm; flex-shrink: 0;
                 }
                 .kaart-links { flex: 1; min-width: 0; display: flex; flex-direction: column; }
                 .kaart-rechts {
-                    width: 36mm; flex-shrink: 0; display: flex; flex-direction: column;
-                    align-items: center; justify-content: flex-start; gap: 3mm; text-align: center;
+                    width: 42mm; flex-shrink: 0; display: flex; flex-direction: column;
+                    align-items: center; justify-content: flex-start; gap: 4mm; text-align: center;
                 }
-                .kaart-logo { width: 32mm; height: 32mm; object-fit: contain; }
+                .kaart-logo { width: 38mm; height: 38mm; object-fit: contain; }
                 .kaart-qr-wrap {
                     margin-top: auto; display: flex; flex-direction: column;
-                    align-items: center; gap: 1.5mm;
+                    align-items: center; gap: 2mm;
                 }
-                .kaart-qr { width: 32mm; height: 32mm; }
+                .kaart-qr { width: 38mm; height: 38mm; }
                 .kaart-qr svg { width: 100%; height: 100%; display: block; }
-                .kaart-qr-label { font-size: 7.5pt; color: #64748b; line-height: 1.2; }
-                .kaart-naam { font-size: 16pt; font-weight: 800; line-height: 1.15; margin: 0 0 1mm; }
-                .kaart-sub { font-size: 10pt; color: #475569; margin: 0 0 3mm; }
-                .kaart-meta { font-size: 10pt; color: #1e293b; display: flex; flex-wrap: wrap; gap: 1mm 4mm; margin-bottom: 2.5mm; }
+                .kaart-qr-label { font-size: 9pt; color: #64748b; line-height: 1.2; }
+                .kaart-naam { font-size: 27pt; font-weight: 800; line-height: 1.1; margin: 0 0 2mm; }
+                .kaart-sub { font-size: 12pt; color: #475569; margin: 0 0 3.5mm; }
+                .kaart-meta { font-size: 12pt; color: #1e293b; display: flex; flex-wrap: wrap; gap: 1.5mm 5mm; margin-bottom: 3.5mm; }
                 .kaart-meta b { color: #0f172a; }
-                .kaart-labels { display: flex; flex-wrap: wrap; gap: 1mm; margin-bottom: 2.5mm; }
+                .kaart-labels { display: flex; flex-wrap: wrap; gap: 1.5mm; margin-bottom: 3.5mm; }
                 .kaart-label-chip {
-                    font-size: 8.5pt; padding: 0.5mm 2mm; border-radius: 3mm;
+                    font-size: 11pt; padding: 1mm 3mm; border-radius: 4mm;
                     background: #fef3e8; color: #b45309; border: 0.2mm solid #fcd9ae;
                 }
                 .kaart-inhoud-titel {
-                    font-size: 8.5pt; font-weight: 700; text-transform: uppercase;
-                    letter-spacing: 0.03em; color: #64748b; margin: 0 0 1mm;
+                    font-size: 10pt; font-weight: 700; text-transform: uppercase;
+                    letter-spacing: 0.03em; color: #64748b; margin: 0 0 1.5mm;
                 }
                 .kaart-inhoud-tekst {
-                    font-size: 9pt; color: #334155; line-height: 1.35;
+                    font-size: 11.5pt; color: #334155; line-height: 1.35;
                     white-space: pre-line; overflow: hidden; flex: 1;
                 }
                 .kaart-code {
-                    font-size: 8.5pt; font-family: 'SFMono-Regular', Consolas, monospace;
-                    color: #b45309; margin-top: auto; padding-top: 1mm;
+                    font-size: 11pt; font-family: 'SFMono-Regular', Consolas, monospace;
+                    color: #b45309; margin-top: auto; padding-top: 1.5mm;
                 }
 
                 @media print {
-                    @page { size: 148mm 105mm; margin: 0; }
+                    @page { size: 150mm 150mm; margin: 0; }
                     html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
                     .kaart-pagina { padding: 0; gap: 0; background: #fff; min-height: 0; }
                     .kaart { box-shadow: none; border-radius: 0; }
