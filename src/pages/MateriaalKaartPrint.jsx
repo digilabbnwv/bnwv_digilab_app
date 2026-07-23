@@ -71,15 +71,9 @@ export default function MateriaalKaartPrint() {
                 .kaart-qr { width: 38mm; height: 38mm; }
                 .kaart-qr svg { width: 100%; height: 100%; display: block; }
                 .kaart-qr-label { font-size: 9pt; color: #64748b; line-height: 1.2; }
-                .kaart-naam { font-size: 27pt; font-weight: 800; line-height: 1.1; margin: 0 0 2mm; }
-                .kaart-sub { font-size: 12pt; color: #475569; margin: 0 0 3.5mm; }
+                .kaart-naam { font-size: 40pt; font-weight: 800; line-height: 1.05; margin: 0 0 3mm; }
                 .kaart-meta { font-size: 12pt; color: #1e293b; display: flex; flex-wrap: wrap; gap: 1.5mm 5mm; margin-bottom: 3.5mm; }
                 .kaart-meta b { color: #0f172a; }
-                .kaart-labels { display: flex; flex-wrap: wrap; gap: 1.5mm; margin-bottom: 3.5mm; }
-                .kaart-label-chip {
-                    font-size: 11pt; padding: 1mm 3mm; border-radius: 4mm;
-                    background: #fef3e8; color: #b45309; border: 0.2mm solid #fcd9ae;
-                }
                 .kaart-inhoud-titel {
                     font-size: 10pt; font-weight: 700; text-transform: uppercase;
                     letter-spacing: 0.03em; color: #64748b; margin: 0 0 1.5mm;
@@ -113,22 +107,11 @@ export default function MateriaalKaartPrint() {
             <div className="kaart">
                 <div className="kaart-links">
                     <p className="kaart-naam">{item.naam}</p>
-                    {(item.type || item.merk) && (
-                        <p className="kaart-sub">{[item.type, item.merk].filter(Boolean).join(' · ')}</p>
-                    )}
 
                     <div className="kaart-meta">
                         {item.aantal != null && <span>Aantal: <b>{item.aantal}x</b></span>}
                         {item.standaard_locatie && <span>Locatie: <b>{item.standaard_locatie}</b></span>}
                     </div>
-
-                    {item.labels?.length > 0 && (
-                        <div className="kaart-labels">
-                            {item.labels.map(l => (
-                                <span key={l.id} className="kaart-label-chip">{l.naam}</span>
-                            ))}
-                        </div>
-                    )}
 
                     {item.inhoud && (
                         <>
