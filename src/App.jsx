@@ -15,6 +15,8 @@ import OnderhoudMelden from './pages/OnderhoudMelden'
 import ReserverenPagina from './pages/ReserverenPagina'
 import ProfielPagina from './pages/ProfielPagina'
 import HelpPagina from './pages/HelpPagina'
+import LesplannenOverzicht from './pages/LesplannenOverzicht'
+import LesplanDetail from './pages/LesplanDetail'
 import WorkshopCatalogus from './pages/WorkshopCatalogus'
 import WorkshopTemplateDetail from './pages/WorkshopTemplateDetail'
 import Kalender from './pages/Kalender'
@@ -22,6 +24,7 @@ import WorkshopInplannen from './pages/WorkshopInplannen'
 import GeplandeWorkshopDetail from './pages/GeplandeWorkshopDetail'
 import PlanningGenereren from './pages/PlanningGenereren'
 import BottomNav from './components/BottomNav'
+import AppHeader from './components/AppHeader'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
@@ -60,7 +63,10 @@ function BeheerderRoute({ children }) {
 function PageLayout({ children }) {
   return (
     <div className="flex flex-col min-h-dvh">
-      <main className={`flex-1 overflow-y-auto pb-20 ${MOCK ? 'pt-6' : ''}`}>
+      <div className={MOCK ? 'pt-6' : ''}>
+        <AppHeader />
+      </div>
+      <main className="flex-1 overflow-y-auto pb-20">
         {children}
       </main>
       <BottomNav />
@@ -106,6 +112,11 @@ export default function App() {
 
         {/* Legacy redirect */}
         <Route path="/kalender/*" element={<Navigate to="/workshops" replace />} />
+
+        {/* Lesplannen */}
+        <Route path="/lesplannen" element={<ProtectedRoute><PageLayout><LesplannenOverzicht /></PageLayout></ProtectedRoute>} />
+        <Route path="/lesplannen/nieuw" element={<BeheerderRoute><PageLayout><LesplanDetail /></PageLayout></BeheerderRoute>} />
+        <Route path="/lesplannen/:id" element={<ProtectedRoute><PageLayout><LesplanDetail /></PageLayout></ProtectedRoute>} />
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />

@@ -147,6 +147,68 @@ CREATE TABLE IF NOT EXISTS rapportage_ontvangers (
   toegevoegd_op   TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 10. Lesplannen — doorzoekbare catalogus van lesmateriaal (documenten/links),
+-- koppelbaar aan workshops en/of fysiek materiaal.
+CREATE TABLE IF NOT EXISTS lesplannen (
+  id                      UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  titel                   TEXT NOT NULL,
+  omschrijving            TEXT,
+  bestand_url             TEXT,           -- link naar document; later evt. Supabase Storage-URL (zelfde kolom)
+  aangemaakt_door         UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
+  aangemaakt_op           TIMESTAMPTZ DEFAULT NOW(),
+  laatst_bijgewerkt_op    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10b. Doelgroepen — vaste, geordende lijst van schoolgroepen (geen vrije labels)
+CREATE TABLE IF NOT EXISTS doelgroepen (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  naam            TEXT NOT NULL UNIQUE,
+  volgorde        INTEGER NOT NULL
+);
+
+-- 10c. Kerndoelen — officiële referentiedata (SLO), niet vrij beheerbaar
+CREATE TABLE IF NOT EXISTS kerndoelen (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code            TEXT NOT NULL,
+  sector          TEXT NOT NULL CHECK (sector IN ('po', 'vo', 'so', 'vso')),
+  vakgebied       TEXT NOT NULL,
+  domein          TEXT,
+  omschrijving    TEXT NOT NULL,
+  aangemaakt_op   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (code, sector)
+);
+
+-- 10d. Koppeltabellen lesplannen (many-to-many)
+CREATE TABLE IF NOT EXISTS lesplan_doelgroepen (
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  doelgroep_id    UUID NOT NULL REFERENCES doelgroepen(id) ON DELETE CASCADE,
+  PRIMARY KEY (lesplan_id, doelgroep_id)
+);
+
+CREATE TABLE IF NOT EXISTS lesplan_kerndoelen (
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  kerndoel_id     UUID NOT NULL REFERENCES kerndoelen(id) ON DELETE CASCADE,
+  PRIMARY KEY (lesplan_id, kerndoel_id)
+);
+
+CREATE TABLE IF NOT EXISTS lesplan_labels (
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  label_id        UUID NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (lesplan_id, label_id)
+);
+
+CREATE TABLE IF NOT EXISTS lesplan_workshops (
+  lesplan_id            UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  workshop_template_id  UUID NOT NULL REFERENCES workshop_templates(id) ON DELETE CASCADE,
+  PRIMARY KEY (lesplan_id, workshop_template_id)
+);
+
+CREATE TABLE IF NOT EXISTS lesplan_materiaal (
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  materiaal_id    UUID NOT NULL REFERENCES materiaal(id) ON DELETE CASCADE,
+  PRIMARY KEY (lesplan_id, materiaal_id)
+);
+
 -- ============================================================
 -- Indexen voor performance
 -- ============================================================
@@ -167,6 +229,18 @@ CREATE INDEX IF NOT EXISTS idx_geplande_workshops_status ON geplande_workshops(s
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_locatie ON geplande_workshops(locatie);
 CREATE INDEX IF NOT EXISTS idx_geplande_workshops_materiaal ON geplande_workshops USING GIN (materiaal_ids);
 CREATE INDEX IF NOT EXISTS idx_logins_medewerker_tijdstip ON logins(medewerker_id, tijdstip);
+CREATE INDEX IF NOT EXISTS idx_kerndoelen_sector ON kerndoelen(sector);
+CREATE INDEX IF NOT EXISTS idx_kerndoelen_vakgebied ON kerndoelen(vakgebied);
+CREATE INDEX IF NOT EXISTS idx_lesplan_doelgroepen_lesplan ON lesplan_doelgroepen(lesplan_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_doelgroepen_doelgroep ON lesplan_doelgroepen(doelgroep_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_kerndoelen_lesplan ON lesplan_kerndoelen(lesplan_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_kerndoelen_kerndoel ON lesplan_kerndoelen(kerndoel_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_labels_lesplan ON lesplan_labels(lesplan_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_labels_label ON lesplan_labels(label_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_workshops_lesplan ON lesplan_workshops(lesplan_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_workshops_workshop ON lesplan_workshops(workshop_template_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_materiaal_lesplan ON lesplan_materiaal(lesplan_id);
+CREATE INDEX IF NOT EXISTS idx_lesplan_materiaal_materiaal ON lesplan_materiaal(materiaal_id);
 
 -- ============================================================
 -- Row Level Security (RLS) — Eenvoudig: alle medewerkers mogen alles
@@ -177,11 +251,21 @@ ALTER TABLE labels             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE materiaal_labels   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transacties        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onderhoudsmeldingen ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reserveringen       ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE workshop_templates  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE geplande_workshops  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE logins              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rapportage_ontvangers ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE lesplannen          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE doelgroepen         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE kerndoelen          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_doelgroepen ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_kerndoelen  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_labels      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_workshops   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_materiaal   ENABLE ROW LEVEL SECURITY;
 
 -- Iedereen mag lezen; schrijven beperkt tot beheerders in de app-laag
 CREATE POLICY "Iedereen kan medewerkers zien" ON medewerkers
@@ -208,6 +292,9 @@ CREATE POLICY "Iedereen kan transacties zien en aanmaken" ON transacties
 CREATE POLICY "Iedereen kan meldingen zien en aanmaken" ON onderhoudsmeldingen
   FOR ALL USING (true);
 
+CREATE POLICY "Iedereen kan reserveringen zien en beheren" ON reserveringen
+  FOR ALL USING (true);
+
 CREATE POLICY "Iedereen kan workshop templates zien en beheren" ON workshop_templates
   FOR ALL USING (true);
 
@@ -218,6 +305,30 @@ CREATE POLICY "Iedereen kan logins zien en aanmaken" ON logins
   FOR ALL USING (true);
 
 CREATE POLICY "Iedereen kan rapportage ontvangers zien en beheren" ON rapportage_ontvangers
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplannen zien en beheren" ON lesplannen
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan doelgroepen zien en beheren" ON doelgroepen
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan kerndoelen zien en beheren" ON kerndoelen
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_doelgroepen zien en beheren" ON lesplan_doelgroepen
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_kerndoelen zien en beheren" ON lesplan_kerndoelen
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_labels zien en beheren" ON lesplan_labels
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_workshops zien en beheren" ON lesplan_workshops
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_materiaal zien en beheren" ON lesplan_materiaal
   FOR ALL USING (true);
 
 -- ============================================================

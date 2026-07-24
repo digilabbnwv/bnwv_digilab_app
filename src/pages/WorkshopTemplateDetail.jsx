@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getWorkshopTemplate, maakWorkshopTemplate, updateWorkshopTemplate, verwijderWorkshopTemplate, DOELGROEPEN } from '../lib/workshops'
 import { getAllMateriaal } from '../lib/materiaal'
+import { getLesplannenVoorWorkshop } from '../lib/lesplannen'
 import { useAuth } from '../context/AuthContext'
 import { LaadIndicator } from '../components/UI'
-import { ArrowLeft, Save, Trash2, BookOpen, Package } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, BookOpen, Package, GraduationCap, ExternalLink } from 'lucide-react'
 
 export default function WorkshopTemplateDetail() {
     const { id } = useParams()
@@ -17,6 +18,7 @@ export default function WorkshopTemplateDetail() {
     const [bewerkModus, setBewerkModus] = useState(isNieuw)
     const [allMateriaal, setAllMateriaal] = useState([])
     const [gekoppeldMateriaal, setGekoppeldMateriaal] = useState([]) // voor leesmodus
+    const [lesplannen, setLesplannen] = useState([])
     const [form, setForm] = useState({
         titel: '',
         toelichting: '',
@@ -62,6 +64,10 @@ export default function WorkshopTemplateDetail() {
             })
             .catch(console.error)
             .finally(() => setLoading(false))
+
+        getLesplannenVoorWorkshop(id)
+            .then(setLesplannen)
+            .catch(console.error)
     }, [id])
 
     const update = (veld, waarde) => setForm(f => ({ ...f, [veld]: waarde }))
@@ -174,6 +180,26 @@ export default function WorkshopTemplateDetail() {
                                         {form.materiaal_omschrijving}
                                     </p>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Gekoppelde lesplannen */}
+                        {lesplannen.length > 0 && (
+                            <div className="border-t border-overlay/10 pt-4 mb-4">
+                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <GraduationCap size={13} /> Lesplannen
+                                </p>
+                                <ul className="space-y-1">
+                                    {lesplannen.map(l => (
+                                        <li key={l.id}>
+                                            <Link to={`/lesplannen/${l.id}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                                                {l.titel}
+                                                {l.bestand_url && <ExternalLink size={12} className="text-text-muted" />}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
 

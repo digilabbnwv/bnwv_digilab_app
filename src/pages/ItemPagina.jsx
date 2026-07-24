@@ -6,6 +6,7 @@ import { uitchecken, inchecken, overrule } from '../lib/materiaal'
 import { verifyPin } from '../lib/auth'
 import { getReserveringenVoorItem, getEersteActieveReservering, computeReserveringsContext } from '../lib/reserveringen'
 import { getGeplandeWorkshopsVoorMateriaal } from '../lib/geplandeWorkshops'
+import { getLesplannenVoorMateriaal } from '../lib/lesplannen'
 import { StatusBadge, LaadIndicator, DatumTijd } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
@@ -14,7 +15,7 @@ import MeenemenContextKaart from '../components/MeenemenContextKaart'
 import QrScanner from '../components/QrScanner'
 import { useToast } from '../context/ToastContext'
 import { foutTekst } from '../lib/foutmelding'
-import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck, Printer } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck, Printer, GraduationCap, ExternalLink } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
@@ -35,6 +36,7 @@ export default function ItemPagina() {
     const [reserveringen, setReserveringen] = useState([])
     const [gekoppeldeReservering, setGekoppeldeReservering] = useState(null)
     const [workshopConflicten, setWorkshopConflicten] = useState([])
+    const [lesplannen, setLesplannen] = useState([])
     const [verzendRetour, setVerzendRetour] = useState(false)
     const [verzendVertraging, setVerzendVertraging] = useState(1)
 
@@ -47,13 +49,15 @@ export default function ItemPagina() {
         try {
             const data = await getMateriaalaItem(code)
             setItem(data)
-            // Laad reserveringen én geplande workshops voor dit item parallel
-            const [res, workshops] = await Promise.all([
+            // Laad reserveringen, geplande workshops en lesplannen voor dit item parallel
+            const [res, workshops, lp] = await Promise.all([
                 getReserveringenVoorItem(data.id),
                 getGeplandeWorkshopsVoorMateriaal(data.id),
+                getLesplannenVoorMateriaal(data.id),
             ])
             setReserveringen(res)
             setWorkshopConflicten(workshops)
+            setLesplannen(lp)
         } catch {
             setFout('Item niet gevonden voor deze QR-code.')
         } finally {
@@ -335,6 +339,26 @@ export default function ItemPagina() {
                             </div>
                         )}
                     </div>
+
+                    {/* ── Lesplannen ─────────────────────────────── */}
+                    {lesplannen.length > 0 && (
+                        <div className="card p-4 mb-4">
+                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <GraduationCap size={13} /> Lesplannen
+                            </p>
+                            <ul className="space-y-1">
+                                {lesplannen.map(l => (
+                                    <li key={l.id}>
+                                        <Link to={`/lesplannen/${l.id}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                                            {l.titel}
+                                            {l.bestand_url && <ExternalLink size={12} className="text-text-muted" />}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
 
                     {/* ── Beschikbaarheid tijdlijn ──────────────── */}
                     {item && (

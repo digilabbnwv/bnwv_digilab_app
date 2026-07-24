@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 9
+const DB_VERSION = 10
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -77,6 +77,8 @@ export async function initMockDB() {
     const med2Id = uuid()
     const labelDigitaalId = uuid()
     const labelLeesbevorderingId = uuid()
+    const labelMediawijsheidId = uuid()
+    const labelBurgerschapId = uuid()
 
     // Helpers voor hergebruik
     const mat = (naam, merk, type, prefix, nr, locatie, aantal, omschrijving, inhoud, status = 'beschikbaar', medId = null) => ({
@@ -299,6 +301,78 @@ export async function initMockDB() {
     workshopTemplates[12].materiaal_ids = [spheroBolt.id, classvrErm.id, ozobotEvo.id, spheroIndiErm.id] // Open Digilab
     workshopTemplates[14].materiaal_ids = [spheroIndiErm.id, spheroIndiNun.id] // Sphero Indi
 
+    // ── Lesplannen (doelgroepen, kerndoelen, voorbeeld-lesplannen) ───────
+    const dg = (naam, volgorde) => ({ id: uuid(), naam, volgorde })
+    const doelgroepen = [
+        dg('Peuters', 1), dg('Groep 1-2', 2), dg('Groep 3', 3), dg('Groep 4', 4),
+        dg('Groep 5', 5), dg('Groep 6', 6), dg('Groep 7', 7), dg('Groep 8', 8),
+        dg('VO 1', 9), dg('VO 2', 10), dg('VO 3', 11), dg('VO 4', 12), dg('VO 5', 13), dg('VO 6', 14),
+    ]
+    const vindDoelgroep = (naam) => doelgroepen.find(d => d.naam === naam)
+
+    const kd = (code, sector, vakgebied, domein, omschrijving) => ({
+        id: uuid(), code, sector, vakgebied, domein, omschrijving, aangemaakt_op: new Date().toISOString(),
+    })
+    const kerndoelen = [
+        kd('22A', 'po', 'Digitale geletterdheid', 'Praktische kennis en vaardigheden', 'Digitale systemen — functioneel inzetten van digitale systemen'),
+        kd('22B', 'po', 'Digitale geletterdheid', 'Praktische kennis en vaardigheden', 'Digitale media en informatie — doelgericht navigeren in het digitale media- en informatielandschap'),
+        kd('22C', 'po', 'Digitale geletterdheid', 'Praktische kennis en vaardigheden', 'Data — verkennen van data en dataverwerking'),
+        kd('22D', 'po', 'Digitale geletterdheid', 'Praktische kennis en vaardigheden', 'Artificiële intelligentie (AI) — verkennen van AI'),
+        kd('23A', 'po', 'Digitale geletterdheid', 'Ontwerpen en maken', 'Creëren met digitale technologie — passende werkwijzen bij het creëren van verschillende digitale producten'),
+        kd('23B', 'po', 'Digitale geletterdheid', 'Ontwerpen en maken', 'Programmeren — programmeren van computerprogramma\'s met computationele denkstrategieën'),
+        kd('24A', 'po', 'Digitale geletterdheid', 'De gedigitaliseerde wereld', 'Veiligheid en privacy — veilig omgaan met digitale systemen en data'),
+        kd('24B', 'po', 'Digitale geletterdheid', 'De gedigitaliseerde wereld', 'Digitale technologie, jezelf en de ander — weloverwogen keuzes maken bij digitaal mediagebruik'),
+        kd('24C', 'po', 'Digitale geletterdheid', 'De gedigitaliseerde wereld', 'Digitale technologie en samenleving — verkennen van de wederzijdse beïnvloeding tussen digitale technologie en samenleving'),
+        kd('21A', 'vo', 'Digitale geletterdheid', 'Praktische kennis en vaardigheden', 'Digitale systemen — functioneel inzetten van digitale systemen'),
+        kd('21B', 'vo', 'Digitale geletterdheid', 'Praktische kennis en vaardigheden', 'Digitale media en informatie — doelgericht navigeren in het digitale media- en informatielandschap'),
+        kd('23B', 'vo', 'Digitale geletterdheid', 'De gedigitaliseerde wereld', 'Digitale technologie, jezelf en de ander — weloverwogen keuzes maken bij digitaal mediagebruik'),
+        kd('BUR-PO-2', 'po', 'Burgerschap', 'Samenleven in een democratische rechtsstaat', 'Verkennen, beschrijven en ervaren van samenleven in een democratische rechtsstaat'),
+        kd('BUR-PO-3', 'po', 'Burgerschap', 'Vormgeven aan democratische en maatschappelijke betrokkenheid', 'Verkennen, beschrijven en ervaren van democratische en maatschappelijke betrokkenheid'),
+    ]
+    const vindKerndoel = (code, sector) => kerndoelen.find(k => k.code === code && k.sector === sector)
+
+    const lp = (titel, omschrijving, bestandUrl) => ({
+        id: uuid(), titel, omschrijving, bestand_url: bestandUrl,
+        aangemaakt_door: med1Id,
+        aangemaakt_op: new Date().toISOString(),
+        laatst_bijgewerkt_op: new Date().toISOString(),
+    })
+    const lesplannen = [
+        lp('Programmeren met de Micro:bit', 'Leerlingen maken kennis met blokprogrammeren via MakeCode en besturen de LED-matrix van hun Micro:bit.', 'https://example.com/lesbrief-microbit.pdf'),
+        lp('Mediawijsheid: nepnieuws herkennen', 'Leerlingen leren betrouwbare van onbetrouwbare online bronnen te onderscheiden aan de hand van actuele voorbeelden.', 'https://example.com/lesbrief-nepnieuws.pdf'),
+        lp('Samen beslissen in de klas', 'Interactieve les over democratisch besluiten nemen, met een simulatie van een klassenvergadering.', null),
+    ]
+    const [lpMicrobit, lpMediawijsheid, lpBurgerschap] = lesplannen
+
+    const lesplan_doelgroepen = [
+        { lesplan_id: lpMicrobit.id, doelgroep_id: vindDoelgroep('Groep 7').id },
+        { lesplan_id: lpMicrobit.id, doelgroep_id: vindDoelgroep('Groep 8').id },
+        { lesplan_id: lpMediawijsheid.id, doelgroep_id: vindDoelgroep('VO 1').id },
+        { lesplan_id: lpMediawijsheid.id, doelgroep_id: vindDoelgroep('VO 2').id },
+        { lesplan_id: lpBurgerschap.id, doelgroep_id: vindDoelgroep('Groep 5').id },
+        { lesplan_id: lpBurgerschap.id, doelgroep_id: vindDoelgroep('Groep 6').id },
+    ]
+    const lesplan_kerndoelen = [
+        { lesplan_id: lpMicrobit.id, kerndoel_id: vindKerndoel('23B', 'po').id },
+        { lesplan_id: lpMicrobit.id, kerndoel_id: vindKerndoel('22A', 'po').id },
+        { lesplan_id: lpMediawijsheid.id, kerndoel_id: vindKerndoel('21B', 'vo').id },
+        { lesplan_id: lpMediawijsheid.id, kerndoel_id: vindKerndoel('23B', 'vo').id },
+        { lesplan_id: lpBurgerschap.id, kerndoel_id: vindKerndoel('BUR-PO-2', 'po').id },
+        { lesplan_id: lpBurgerschap.id, kerndoel_id: vindKerndoel('BUR-PO-3', 'po').id },
+    ]
+    const lesplan_labels = [
+        { lesplan_id: lpMicrobit.id, label_id: labelDigitaalId },
+        { lesplan_id: lpMediawijsheid.id, label_id: labelMediawijsheidId },
+        { lesplan_id: lpBurgerschap.id, label_id: labelBurgerschapId },
+    ]
+    const lesplan_workshops = [
+        { lesplan_id: lpMicrobit.id, workshop_template_id: workshopTemplates[0].id },
+    ]
+    const lesplan_materiaal = [
+        { lesplan_id: lpMicrobit.id, materiaal_id: mbItErm.id },
+        { lesplan_id: lpMicrobit.id, materiaal_id: mbItNun.id },
+    ]
+
     const newDB = {
         version: DB_VERSION,
         medewerkers: [
@@ -309,6 +383,8 @@ export async function initMockDB() {
         labels: [
             { id: labelDigitaalId, naam: 'Digitaal', kleur: '#E8772E', aangemaakt_op: new Date().toISOString() },
             { id: labelLeesbevorderingId, naam: 'Leesbevordering', kleur: '#F59E0B', aangemaakt_op: new Date().toISOString() },
+            { id: labelMediawijsheidId, naam: 'Mediawijsheid', kleur: '#3B82F6', aangemaakt_op: new Date().toISOString() },
+            { id: labelBurgerschapId, naam: 'Burgerschap', kleur: '#A855F7', aangemaakt_op: new Date().toISOString() },
         ],
         materiaal_labels: [
             ...materiaalItems
@@ -421,6 +497,14 @@ export async function initMockDB() {
                 planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: new Date().toISOString(),
             },
         ],
+        doelgroepen,
+        kerndoelen,
+        lesplannen,
+        lesplan_doelgroepen,
+        lesplan_kerndoelen,
+        lesplan_labels,
+        lesplan_workshops,
+        lesplan_materiaal,
     }
 
     saveDB(newDB)
@@ -705,6 +789,122 @@ export function mockSetLabelsVoorMateriaal(materiaalId, labelIds) {
     })
     saveDB(db)
     return getLabelsVoorMateriaal(materiaalId, db)
+}
+
+// ── Lesplannen mock functies ─────────────────────────────────────
+
+function enrichLesplan(item, db) {
+    const doelgroepIds = (db.lesplan_doelgroepen || []).filter(r => r.lesplan_id === item.id).map(r => r.doelgroep_id)
+    const kerndoelIds = (db.lesplan_kerndoelen || []).filter(r => r.lesplan_id === item.id).map(r => r.kerndoel_id)
+    const labelIds = (db.lesplan_labels || []).filter(r => r.lesplan_id === item.id).map(r => r.label_id)
+    const workshopIds = (db.lesplan_workshops || []).filter(r => r.lesplan_id === item.id).map(r => r.workshop_template_id)
+    const materiaalIds = (db.lesplan_materiaal || []).filter(r => r.lesplan_id === item.id).map(r => r.materiaal_id)
+    return {
+        ...item,
+        doelgroepen: (db.doelgroepen || []).filter(d => doelgroepIds.includes(d.id)).sort((a, b) => a.volgorde - b.volgorde),
+        kerndoelen: (db.kerndoelen || []).filter(k => kerndoelIds.includes(k.id)),
+        labels: (db.labels || []).filter(l => labelIds.includes(l.id)),
+        workshops: (db.workshop_templates || []).filter(w => workshopIds.includes(w.id)).map(w => ({ id: w.id, titel: w.titel })),
+        materiaal: (db.materiaal || []).filter(m => materiaalIds.includes(m.id)).map(m => ({ id: m.id, naam: m.naam, type: m.type })),
+    }
+}
+
+export function mockGetAllLesplannen() {
+    const db = getDB()
+    return (db.lesplannen || [])
+        .map(item => enrichLesplan(item, db))
+        .sort((a, b) => a.titel.localeCompare(b.titel))
+}
+
+export function mockGetLesplan(id) {
+    const db = getDB()
+    const item = (db.lesplannen || []).find(l => l.id === id)
+    if (!item) throw new Error('Lesplan niet gevonden')
+    return enrichLesplan(item, db)
+}
+
+export function mockGetLesplannenVoorWorkshop(workshopTemplateId) {
+    const db = getDB()
+    const lesplanIds = (db.lesplan_workshops || [])
+        .filter(r => r.workshop_template_id === workshopTemplateId)
+        .map(r => r.lesplan_id)
+    return (db.lesplannen || []).filter(l => lesplanIds.includes(l.id))
+}
+
+export function mockGetLesplannenVoorMateriaal(materiaalId) {
+    const db = getDB()
+    const lesplanIds = (db.lesplan_materiaal || [])
+        .filter(r => r.materiaal_id === materiaalId)
+        .map(r => r.lesplan_id)
+    return (db.lesplannen || []).filter(l => lesplanIds.includes(l.id))
+}
+
+export function mockGetAllDoelgroepen() {
+    const db = getDB()
+    return [...(db.doelgroepen || [])].sort((a, b) => a.volgorde - b.volgorde)
+}
+
+export function mockGetAllKerndoelen({ sector, vakgebied } = {}) {
+    const db = getDB()
+    let res = db.kerndoelen || []
+    if (sector) res = res.filter(k => k.sector === sector)
+    if (vakgebied) res = res.filter(k => k.vakgebied === vakgebied)
+    return [...res].sort((a, b) =>
+        a.vakgebied.localeCompare(b.vakgebied) || (a.domein || '').localeCompare(b.domein || '') || a.code.localeCompare(b.code)
+    )
+}
+
+function syncMockKoppeling(db, tabel, lesplanId, kolom, ids) {
+    db[tabel] = (db[tabel] || []).filter(r => r.lesplan_id !== lesplanId)
+    ;(ids || []).forEach(id => db[tabel].push({ lesplan_id: lesplanId, [kolom]: id }))
+}
+
+function syncAlleMockKoppelingen(db, lesplanId, { doelgroep_ids, kerndoel_ids, label_ids, workshop_template_ids, materiaal_ids }) {
+    syncMockKoppeling(db, 'lesplan_doelgroepen', lesplanId, 'doelgroep_id', doelgroep_ids)
+    syncMockKoppeling(db, 'lesplan_kerndoelen', lesplanId, 'kerndoel_id', kerndoel_ids)
+    syncMockKoppeling(db, 'lesplan_labels', lesplanId, 'label_id', label_ids)
+    syncMockKoppeling(db, 'lesplan_workshops', lesplanId, 'workshop_template_id', workshop_template_ids)
+    syncMockKoppeling(db, 'lesplan_materiaal', lesplanId, 'materiaal_id', materiaal_ids)
+}
+
+export function mockAddLesplan(payload) {
+    const db = getDB()
+    const { titel, omschrijving, bestand_url, aangemaakt_door } = payload
+    const nieuw = {
+        id: uuid(), titel, omschrijving: omschrijving || null, bestand_url: bestand_url || null,
+        aangemaakt_door, aangemaakt_op: new Date().toISOString(), laatst_bijgewerkt_op: new Date().toISOString(),
+    }
+    if (!db.lesplannen) db.lesplannen = []
+    db.lesplannen.push(nieuw)
+    syncAlleMockKoppelingen(db, nieuw.id, payload)
+    saveDB(db)
+    return enrichLesplan(nieuw, db)
+}
+
+export function mockUpdateLesplan(id, payload) {
+    const db = getDB()
+    const idx = (db.lesplannen || []).findIndex(l => l.id === id)
+    if (idx === -1) throw new Error('Lesplan niet gevonden')
+    const { titel, omschrijving, bestand_url } = payload
+    db.lesplannen[idx] = {
+        ...db.lesplannen[idx],
+        titel, omschrijving: omschrijving || null, bestand_url: bestand_url || null,
+        laatst_bijgewerkt_op: new Date().toISOString(),
+    }
+    syncAlleMockKoppelingen(db, id, payload)
+    saveDB(db)
+    return enrichLesplan(db.lesplannen[idx], db)
+}
+
+export function mockVerwijderLesplan(id) {
+    const db = getDB()
+    db.lesplannen = (db.lesplannen || []).filter(l => l.id !== id)
+    db.lesplan_doelgroepen = (db.lesplan_doelgroepen || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_kerndoelen = (db.lesplan_kerndoelen || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_labels = (db.lesplan_labels || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_workshops = (db.lesplan_workshops || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_materiaal = (db.lesplan_materiaal || []).filter(r => r.lesplan_id !== id)
+    saveDB(db)
 }
 
 // ── Onderhoud mock functies ─────────────────────────────────────
