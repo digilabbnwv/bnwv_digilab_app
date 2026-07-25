@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import {
-    mockGetMateriaalByQR, mockGetMateriaalById, mockGetAllMateriaal,
+    mockGetMateriaalByQR, mockGetMateriaalById, mockGetAllMateriaal, mockGetGearchiveerdMateriaal,
     mockUitchecken, mockInchecken, mockOverrule,
     mockGetUitgecheckt, mockGetMijnMateriaal, mockGetMijnTransacties,
     mockAddMateriaal, mockGetTransacties, mockUpdateMateriaal, mockPreviewCode,
@@ -45,9 +45,30 @@ export async function getAllMateriaal() {
     const { data, error } = await supabase
         .from('materiaal')
         .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, status), materiaal_labels(label:labels(*))`)
+        .eq('gearchiveerd', false)
         .order('naam')
     if (error) throw error
     return (data || []).map(vlakLabels)
+}
+
+export async function getGearchiveerdMateriaal() {
+    if (MOCK) return mockGetGearchiveerdMateriaal()
+
+    const { data, error } = await supabase
+        .from('materiaal')
+        .select(`*, huidige_medewerker:medewerkers!materiaal_huidige_medewerker_id_fkey(id, naam), onderhoudsmeldingen(id, status), materiaal_labels(label:labels(*))`)
+        .eq('gearchiveerd', true)
+        .order('naam')
+    if (error) throw error
+    return (data || []).map(vlakLabels)
+}
+
+export async function archiveerMateriaal(id) {
+    return updateMateriaal(id, { gearchiveerd: true })
+}
+
+export async function herstelMateriaal(id) {
+    return updateMateriaal(id, { gearchiveerd: false })
 }
 
 export async function uitchecken(materiaalId, medewerkerId, medewerkernaam, reserveringId = null) {

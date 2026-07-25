@@ -5,15 +5,6 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
 
 ## Open
 
-- **2026-07-24 — QR-scan vóór inloggen springt naar home in plaats van naar het gescande item**
-  Als je met de camera een QR-code scant terwijl je nog niet bent ingelogd, kom je na het
-  inloggen op de homepage terecht in plaats van automatisch door te gaan naar de URL van de
-  gescande QR-code.
-
-- **2026-07-24 — Materiaal archiveren/verwijderen ontbreekt**
-  Er is nu geen manier om materiaal te archiveren of te verwijderen. Archiveren heeft de
-  voorkeur boven hard verwijderen (behoud van historie/transacties).
-
 - **2026-07-24 — "Item niet gevonden" bij openen van materiaal**
   Vermoedelijke oorzaak: sinds de Lesplannen-feature (2026-07-24) haalt `ItemPagina.jsx` ook
   lesplannen op via `Promise.all`. Als de migraties in `supabase/migrations/20260724*.sql` nog
@@ -32,4 +23,13 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
 
 ## Opgelost
 
-_(nog leeg)_
+- **2026-07-25 — QR-scan vóór inloggen springt naar home in plaats van naar het gescande item**
+  Opgelost: `ProtectedRoute` geeft de oorspronkelijke locatie mee via `state.from` bij de
+  redirect naar `/login`, en de login/registratie-routes in `App.jsx` sturen na inloggen naar
+  die bestemming in plaats van hardcoded naar `/`. Zie [App.jsx](src/App.jsx).
+
+- **2026-07-25 — Materiaal archiveren/verwijderen ontbreekt**
+  Opgelost (archiveren, geen hard delete): nieuwe `gearchiveerd`-kolom op `materiaal`.
+  Beheerders kunnen een item archiveren/herstellen vanaf de itempagina; gearchiveerd materiaal
+  verdwijnt uit alle keuzelijsten maar blijft bereikbaar via QR/link, en is terug te vinden in
+  het nieuwe archief-overzicht (`/materiaal/archief`).

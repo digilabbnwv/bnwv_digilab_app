@@ -1,11 +1,12 @@
 import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoginPagina from './pages/LoginPagina'
 import RegistratiePagina from './pages/RegistratiePagina'
 import Dashboard from './pages/Dashboard'
 import ItemPagina from './pages/ItemPagina'
 import MateriaalOverzicht from './pages/MateriaalOverzicht'
+import MateriaalArchief from './pages/MateriaalArchief'
 import NieuwMateriaal from './pages/NieuwMateriaal'
 import MateriaalBewerken from './pages/MateriaalBewerken'
 import MateriaalKaartPrint from './pages/MateriaalKaartPrint'
@@ -39,12 +40,13 @@ function MockBanner() {
 
 function ProtectedRoute({ children }) {
   const { medewerker, loading } = useAuth()
+  const location = useLocation()
   if (loading) return (
     <div className="min-h-dvh flex items-center justify-center bg-bg-app">
       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   )
-  if (!medewerker) return <Navigate to="/login" replace />
+  if (!medewerker) return <Navigate to="/login" state={{ from: location }} replace />
   return children
 }
 
@@ -76,14 +78,17 @@ function PageLayout({ children }) {
 
 export default function App() {
   const { medewerker } = useAuth()
+  const location = useLocation()
+  const van = location.state?.from
+  const bestemmingNaLogin = van ? `${van.pathname}${van.search || ''}` : '/'
 
   return (
     <div className="bg-decoration relative min-h-dvh">
       <MockBanner />
       <Routes>
         {/* Publieke routes */}
-        <Route path="/login" element={medewerker ? <Navigate to="/" replace /> : <LoginPagina />} />
-        <Route path="/registratie" element={medewerker ? <Navigate to="/" replace /> : <RegistratiePagina />} />
+        <Route path="/login" element={medewerker ? <Navigate to={bestemmingNaLogin} replace /> : <LoginPagina />} />
+        <Route path="/registratie" element={medewerker ? <Navigate to={bestemmingNaLogin} replace /> : <RegistratiePagina />} />
 
         {/* Beveiligde routes */}
         <Route path="/" element={<ProtectedRoute><PageLayout><Dashboard /></PageLayout></ProtectedRoute>} />
@@ -95,6 +100,7 @@ export default function App() {
         <Route path="/materiaal/:id/bewerken" element={<BeheerderRoute><PageLayout><MateriaalBewerken /></PageLayout></BeheerderRoute>} />
         <Route path="/materiaal/:id/kaart" element={<ProtectedRoute><MateriaalKaartPrint /></ProtectedRoute>} />
         <Route path="/materiaal/labels" element={<BeheerderRoute><PageLayout><LabelsBeheer /></PageLayout></BeheerderRoute>} />
+        <Route path="/materiaal/archief" element={<BeheerderRoute><PageLayout><MateriaalArchief /></PageLayout></BeheerderRoute>} />
 
         {/* Meldingen — overzicht eerst, dan nieuw formulier */}
         <Route path="/melding" element={<ProtectedRoute><PageLayout><MeldingenOverzicht /></PageLayout></ProtectedRoute>} />

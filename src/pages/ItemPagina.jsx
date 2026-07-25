@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMateriaalaItem } from '../lib/materiaal'
-import { uitchecken, inchecken, overrule } from '../lib/materiaal'
+import { uitchecken, inchecken, overrule, archiveerMateriaal, herstelMateriaal } from '../lib/materiaal'
 import { verifyPin } from '../lib/auth'
 import { getReserveringenVoorItem, getEersteActieveReservering, computeReserveringsContext } from '../lib/reserveringen'
 import { getGeplandeWorkshopsVoorMateriaal } from '../lib/geplandeWorkshops'
@@ -15,7 +15,7 @@ import MeenemenContextKaart from '../components/MeenemenContextKaart'
 import QrScanner from '../components/QrScanner'
 import { useToast } from '../context/ToastContext'
 import { foutTekst } from '../lib/foutmelding'
-import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck, Printer, GraduationCap, ExternalLink } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Clock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, QrCode, Wrench, CalendarDays, CalendarCheck, PackagePlus, Pencil, Truck, Printer, GraduationCap, ExternalLink, Archive, ArchiveRestore } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
@@ -39,6 +39,8 @@ export default function ItemPagina() {
     const [lesplannen, setLesplannen] = useState([])
     const [verzendRetour, setVerzendRetour] = useState(false)
     const [verzendVertraging, setVerzendVertraging] = useState(1)
+    const [archiefModalOpen, setArchiefModalOpen] = useState(false)
+    const [archiefBezig, setArchiefBezig] = useState(false)
 
     // Scan modus: als qrCode === 'scan', open camera
     const isScanModus = qrCode === 'scan'
@@ -205,6 +207,33 @@ export default function ItemPagina() {
         }
     }
 
+    const handleArchiveren = async () => {
+        setArchiefBezig(true)
+        try {
+            await archiveerMateriaal(item.id)
+            toast.succes('Materiaal gearchiveerd')
+            setArchiefModalOpen(false)
+            laadItem(qrCode)
+        } catch (err) {
+            toast.fout(foutTekst(err, 'Archiveren lukte niet — probeer het opnieuw.'))
+        } finally {
+            setArchiefBezig(false)
+        }
+    }
+
+    const handleHerstellen = async () => {
+        setArchiefBezig(true)
+        try {
+            await herstelMateriaal(item.id)
+            toast.succes('Materiaal hersteld uit archief')
+            laadItem(qrCode)
+        } catch (err) {
+            toast.fout(foutTekst(err, 'Herstellen lukte niet — probeer het opnieuw.'))
+        } finally {
+            setArchiefBezig(false)
+        }
+    }
+
     // Gescande waarde kan een volledige URL zijn (.../item/CODE) of de kale QR-code.
     const handleScanDetect = useCallback((waarde) => {
         if (!waarde) return
@@ -289,7 +318,14 @@ export default function ItemPagina() {
                                     <code className="text-xs font-mono text-accent mt-1 block tracking-wider">{item.qr_code}</code>
                                 )}
                             </div>
-                            <StatusBadge status={item.status} />
+                            <div className="flex flex-col items-end gap-1.5">
+                                <StatusBadge status={item.status} />
+                                {item.gearchiveerd && (
+                                    <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted bg-overlay/10 px-2 py-0.5 rounded-full">
+                                        <Archive size={10} /> Gearchiveerd
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         {heeftOpenMeldingen && (
@@ -438,33 +474,88 @@ export default function ItemPagina() {
                         )
                     })()}
 
-                    {/* Acties */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <button
-                            id="btn-meenemen"
-                            onClick={() => openActie('meenemen')}
-                            className={`${isUitgechecktDoorMij ? 'btn-ghost' : 'btn-primary'} flex items-center justify-center gap-2 py-4`}
-                        >
-                            <ArrowUpCircle size={20} /> Meenemen
+                    {item.gearchiveerd ? (
+                        <>
+                            {/* Gearchiveerd: geen meenemen/terugbrengen, alleen herstellen voor beheerders */}
+                            <div className="card p-4 mb-4 bg-overlay/5 text-text-muted text-sm flex items-center gap-3">
+                                <Archive size={18} className="flex-shrink-0" />
+                                Dit item is gearchiveerd en niet meer in gebruik.
+                            </div>
+                            {isBeheerder && (
+                                <button
+                                    onClick={handleHerstellen}
+                                    disabled={archiefBezig}
+                                    className="btn-ghost w-full flex items-center justify-center gap-2 py-3 mb-4"
+                                >
+                                    <ArchiveRestore size={16} /> {archiefBezig ? 'Bezig...' : 'Herstellen uit archief'}
+                                </button>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {/* Acties */}
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <button
+                                    id="btn-meenemen"
+                                    onClick={() => openActie('meenemen')}
+                                    className={`${isUitgechecktDoorMij ? 'btn-ghost' : 'btn-primary'} flex items-center justify-center gap-2 py-4`}
+                                >
+                                    <ArrowUpCircle size={20} /> Meenemen
+                                </button>
+                                <button
+                                    id="btn-terugbrengen"
+                                    onClick={() => openActie('terugbrengen')}
+                                    className={`${isUitgechecktDoorMij ? 'btn-primary' : 'btn-ghost'} flex items-center justify-center gap-2 py-4`}
+                                >
+                                    <ArrowDownCircle size={20} /> Terugbrengen
+                                </button>
+                            </div>
+
+                            {/* Melding maken */}
+                            <Link
+                                to={`/melding/nieuw/${item.id}`}
+                                className="card p-4 flex items-center gap-3 hover:bg-bg-hover transition-colors w-full mb-4"
+                            >
+                                <Wrench size={18} className="text-accent" />
+                                <span className="text-text-secondary text-sm">Onderhoudsmelding maken</span>
+                            </Link>
+
+                            {isBeheerder && (
+                                item.status === 'in_gebruik' ? (
+                                    <p className="text-text-muted text-xs text-center">
+                                        Kan niet archiveren: item is in gebruik
+                                    </p>
+                                ) : (
+                                    <button
+                                        onClick={() => setArchiefModalOpen(true)}
+                                        className="w-full flex items-center justify-center gap-1.5 text-text-muted text-xs hover:text-text-secondary transition-colors py-2"
+                                    >
+                                        <Archive size={13} /> Archiveren
+                                    </button>
+                                )
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* Modal: Archiveren bevestigen */}
+            {archiefModalOpen && (
+                <Modal title="Materiaal archiveren" onClose={() => setArchiefModalOpen(false)} size="sm">
+                    <p className="text-text-secondary text-sm mb-4">
+                        Weet je zeker dat je <span className="font-semibold text-text-primary">{item.naam}</span> wilt
+                        archiveren? Het verdwijnt dan uit alle overzichten en keuzelijsten, maar blijft bereikbaar via
+                        deze link en de QR-code, en kan altijd hersteld worden.
+                    </p>
+                    <div className="flex gap-3">
+                        <button onClick={() => setArchiefModalOpen(false)} className="btn-ghost flex-1" disabled={archiefBezig}>
+                            Annuleren
                         </button>
-                        <button
-                            id="btn-terugbrengen"
-                            onClick={() => openActie('terugbrengen')}
-                            className={`${isUitgechecktDoorMij ? 'btn-primary' : 'btn-ghost'} flex items-center justify-center gap-2 py-4`}
-                        >
-                            <ArrowDownCircle size={20} /> Terugbrengen
+                        <button onClick={handleArchiveren} className="flex-1 rounded-xl bg-error text-white font-medium py-2.5 hover:bg-error/90 transition-colors disabled:opacity-50" disabled={archiefBezig}>
+                            {archiefBezig ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Archiveren'}
                         </button>
                     </div>
-
-                    {/* Melding maken */}
-                    <Link
-                        to={`/melding/nieuw/${item.id}`}
-                        className="card p-4 flex items-center gap-3 hover:bg-bg-hover transition-colors w-full"
-                    >
-                        <Wrench size={18} className="text-accent" />
-                        <span className="text-text-secondary text-sm">Onderhoudsmelding maken</span>
-                    </Link>
-                </>
+                </Modal>
             )}
 
             {/* Modal: Meenemen — Stap 1: Reserveringscontext */}

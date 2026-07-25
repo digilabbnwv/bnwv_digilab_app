@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS materiaal (
   huidige_medewerker_id   UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
   laatste_medewerker_naam TEXT,
   status                  TEXT NOT NULL DEFAULT 'beschikbaar' CHECK (status IN ('beschikbaar', 'in_gebruik')),
+  gearchiveerd            BOOLEAN NOT NULL DEFAULT false,   -- verborgen uit keuzelijsten, blijft bereikbaar via QR/link
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -215,6 +216,7 @@ CREATE TABLE IF NOT EXISTS lesplan_materiaal (
 CREATE INDEX IF NOT EXISTS idx_materiaal_qr_code ON materiaal(qr_code);
 CREATE INDEX IF NOT EXISTS idx_materiaal_status ON materiaal(status);
 CREATE INDEX IF NOT EXISTS idx_materiaal_categorie ON materiaal(categorie_prefix);
+CREATE INDEX IF NOT EXISTS idx_materiaal_gearchiveerd ON materiaal(gearchiveerd);
 CREATE INDEX IF NOT EXISTS idx_materiaal_labels_materiaal ON materiaal_labels(materiaal_id);
 CREATE INDEX IF NOT EXISTS idx_materiaal_labels_label ON materiaal_labels(label_id);
 CREATE INDEX IF NOT EXISTS idx_transacties_materiaal_id ON transacties(materiaal_id);

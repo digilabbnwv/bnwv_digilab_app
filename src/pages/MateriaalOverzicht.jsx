@@ -4,7 +4,7 @@ import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
 import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
-import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode, Tag, Settings } from 'lucide-react'
+import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode, Tag, Settings, Archive } from 'lucide-react'
 
 const LOCATIES = ['Ermelo', 'Nunspeet', 'Harderwijk', 'Putten', 'Elspeet', 'Anders']
 
@@ -81,6 +81,15 @@ export default function MateriaalOverzicht() {
                             aria-label="Labels beheren"
                         >
                             <Settings size={16} /> Labels
+                        </Link>
+                    )}
+                    {isBeheerder && (
+                        <Link
+                            to="/materiaal/archief"
+                            className="btn-ghost py-2 px-3 text-sm flex items-center gap-2"
+                            aria-label="Gearchiveerd materiaal"
+                        >
+                            <Archive size={16} /> Archief
                         </Link>
                     )}
                     {isBeheerder && (

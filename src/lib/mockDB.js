@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 10
+const DB_VERSION = 11
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -96,6 +96,7 @@ export async function initMockDB() {
         huidige_medewerker_id: status === 'in_gebruik' ? medId : null,
         laatste_medewerker_naam: null,
         status,
+        gearchiveerd: false,
     })
 
     // ── Materiaallijst op basis van inventarisatie BNWV Digilab ─────────
@@ -609,6 +610,15 @@ export function mockGetMateriaalById(id) {
 export function mockGetAllMateriaal() {
     const db = getDB()
     return db.materiaal
+        .filter(item => !item.gearchiveerd)
+        .map(item => enrichMateriaal(item, db))
+        .sort((a, b) => a.naam.localeCompare(b.naam))
+}
+
+export function mockGetGearchiveerdMateriaal() {
+    const db = getDB()
+    return db.materiaal
+        .filter(item => item.gearchiveerd)
         .map(item => enrichMateriaal(item, db))
         .sort((a, b) => a.naam.localeCompare(b.naam))
 }
@@ -713,6 +723,7 @@ export function mockAddMateriaal(item) {
         status: 'beschikbaar',
         huidige_medewerker_id: null,
         huidige_locatie: item.standaard_locatie,
+        gearchiveerd: false,
     }
     db.materiaal.push(nieuw)
     saveDB(db)
