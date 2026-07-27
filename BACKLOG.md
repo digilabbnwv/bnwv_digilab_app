@@ -30,8 +30,7 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
   End-to-end geverifieerd in mock-modus (unit tests + browser). Zie
   [reserveringen.js](src/lib/reserveringen.js), [materiaal.js](src/lib/materiaal.js),
   [ReserverenPagina.jsx](src/pages/ReserverenPagina.jsx).
-  ⚠️ **Actie voor live**: de migratie moet nog in het live Supabase-project worden gedraaid
-  (zoals eerder bij de Lesplannen-/archiverings-migraties).
+  Migratie op 2026-07-27 in het live Supabase-project gedraaid en bevestigd; code gemerged naar `main`. Volledig afgerond.
 
 - **2026-07-25 — QR-scan vóór inloggen springt naar home in plaats van naar het gescande item**
   Opgelost: `ProtectedRoute` geeft de oorspronkelijke locatie mee via `state.from` bij de
