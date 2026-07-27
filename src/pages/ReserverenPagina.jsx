@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-    getAlleReserveringen,
+    getAlleReserveringen, getGearchiveerdeReserveringen,
     maakReservering, annuleerReservering,
 } from '../lib/reserveringen'
 import { getAllMateriaal } from '../lib/materiaal'
@@ -89,6 +89,11 @@ export default function ReserverenPagina() {
     // Tab: kalender vs mijn reserveringen
     const [tab, setTab] = useState('kalender')
 
+    // Archief (afgeronde + geannuleerde reserveringen) — lazy geladen
+    const [archief, setArchief] = useState([])
+    const [archiefLoading, setArchiefLoading] = useState(false)
+    const [archiefGeladen, setArchiefGeladen] = useState(false)
+
     // Nieuw reservering modal
     const [toonNieuw, setToonNieuw] = useState(false)
     const [nieuwForm, setNieuwForm] = useState({
@@ -145,6 +150,16 @@ export default function ReserverenPagina() {
     }, [])
 
     useEffect(() => { laad() }, [laad])
+
+    // Laad archief bij openen van de archief-tab (en na wijzigingen opnieuw)
+    useEffect(() => {
+        if (tab !== 'archief' || archiefGeladen) return
+        setArchiefLoading(true)
+        getGearchiveerdeReserveringen()
+            .then(setArchief)
+            .catch(console.error)
+            .finally(() => { setArchiefLoading(false); setArchiefGeladen(true) })
+    }, [tab, archiefGeladen])
 
     // Laad workshops voor de huidige maand (voor kalenderweergave)
     useEffect(() => {
@@ -283,6 +298,7 @@ export default function ReserverenPagina() {
             await annuleerReservering(annuleerDoel.id, medewerker.id)
             toast.succes('Reservering geannuleerd')
             setAnnuleerDoel(null)
+            setArchiefGeladen(false) // archief opnieuw laden bij volgende bezoek
             await laad()
         } catch (err) {
             toast.fout(foutTekst(err, 'Annuleren lukte niet — probeer het opnieuw.'))
@@ -301,7 +317,7 @@ export default function ReserverenPagina() {
             <div className="flex items-center justify-between mb-5">
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary">Reserveren</h1>
-                    <p className="text-text-muted text-sm mt-0.5">{reserveringen.length} actieve reservering{reserveringen.length !== 1 ? 'en' : ''}</p>
+                    <p className="text-text-muted text-sm mt-0.5">{reserveringen.length} lopende reservering{reserveringen.length !== 1 ? 'en' : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -319,6 +335,7 @@ export default function ReserverenPagina() {
                     { key: 'kalender', label: '📅 Kalender' },
                     { key: 'mijn', label: `👤 Mijn (${mijnRes.length})` },
                     { key: 'alle', label: `📋 Alle (${alleKomende12Maanden.length})` },
+                    { key: 'archief', label: `🗄️ Archief${archiefGeladen ? ` (${archief.length})` : ''}` },
                 ].map(({ key, label }) => (
                     <button
                         key={key}
@@ -478,6 +495,28 @@ export default function ReserverenPagina() {
                         </div>
                     )}
                 </div>
+            ) : tab === 'archief' ? (
+                /* Archief — afgeronde (teruggebracht) + geannuleerde reserveringen */
+                <div>
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
+                        Afgerond & geannuleerd
+                    </p>
+                    {archiefLoading ? (
+                        <LaadIndicator />
+                    ) : archief.length === 0 ? (
+                        <div className="card p-8 text-center">
+                            <Calendar size={32} className="mx-auto mb-3 text-text-muted opacity-30" />
+                            <p className="text-text-muted text-sm">Nog geen afgeronde of geannuleerde reserveringen</p>
+                        </div>
+                    ) : (
+                        <ReserveringLijst
+                            reserveringen={archief}
+                            medewerker={medewerker}
+                            alleItems={alleItems}
+                            onAnnuleer={setAnnuleerDoel}
+                        />
+                    )}
+                </div>
             ) : (
                 /* Mijn reserveringen tab */
                 <div>
@@ -622,6 +661,13 @@ export default function ReserverenPagina() {
 
 // ── Reservering kaart component ─────────────────────────────────
 
+// Statuslabel per reservering. 'actief' krijgt geen badge (dat is de norm).
+const STATUS_PILL = {
+    opgehaald: { label: 'Opgehaald — in gebruik', cls: 'bg-primary/15 text-primary' },
+    teruggebracht: { label: 'Teruggebracht', cls: 'bg-success/15 text-success' },
+    geannuleerd: { label: 'Geannuleerd', cls: 'bg-error/15 text-error' },
+}
+
 function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, toonAnnuleer }) {
     if (reserveringen.length === 0) {
         return (
@@ -689,14 +735,22 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, to
                                     {isMijn ? 'Jouw reservering' : r.medewerker?.naam || '—'}
                                 </p>
 
+                                {/* Statusbadge (opgehaald / teruggebracht / geannuleerd) */}
+                                {STATUS_PILL[r.status] && (
+                                    <span className={`inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_PILL[r.status].cls}`}>
+                                        {STATUS_PILL[r.status].label}
+                                    </span>
+                                )}
+
                                 {/* Toelichting */}
                                 {r.toelichting && (
                                     <p className="text-xs text-text-muted mt-1 italic line-clamp-2">"{r.toelichting}"</p>
                                 )}
                             </div>
 
-                            {/* Annuleer knop (eigen reserveringen) */}
-                            {(toonAnnuleer || isMijn) && (
+                            {/* Annuleer knop — alleen voor nog-actieve eigen reserveringen.
+                                Een opgehaalde reservering annuleer je niet, die breng je terug (inchecken). */}
+                            {(toonAnnuleer || isMijn) && r.status === 'actief' && (
                                 <button
                                     onClick={() => onAnnuleer(r)}
                                     className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-error transition-colors flex-shrink-0"

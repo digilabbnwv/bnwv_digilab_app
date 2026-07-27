@@ -15,6 +15,24 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
 
 ## Opgelost
 
+- **2026-07-27 — Opgehaalde reservering verdwijnt volledig uit beeld**
+  Oorzaak: ophalen werd behandeld als eindpunt van een reservering. `uitchecken` zette de
+  reservering op `opgehaald`, terugbrengen (`inchecken`) deed er niets mee, en alle overzichten
+  filterden strikt op `status = 'actief'` — dus de reservering viel meteen uit beeld en er was
+  geen weergave voor opgehaalde/afgeronde reserveringen.
+  Opgelost door de levenscyclus compleet te maken: `actief → opgehaald (loopt nog) →
+  teruggebracht (afgerond)`, naast `geannuleerd`. Nieuwe status `teruggebracht`
+  (migratie `20260727120000_add_reservering_teruggebracht_status.sql`). `inchecken`/`overrule`
+  sluiten nu de opgehaalde reservering af via `markeerTeruggebracht`. Lopende overzichten tonen
+  `actief + opgehaald` (met badge "Opgehaald — in gebruik"; annuleer-knop verborgen voor opgehaald),
+  en er is een nieuwe **Archief**-tab op de Reserveren-pagina voor `teruggebracht + geannuleerd`.
+  Beschikbaarheids-/conflictcheck en de maandrapportage tellen opgehaald nu correct mee.
+  End-to-end geverifieerd in mock-modus (unit tests + browser). Zie
+  [reserveringen.js](src/lib/reserveringen.js), [materiaal.js](src/lib/materiaal.js),
+  [ReserverenPagina.jsx](src/pages/ReserverenPagina.jsx).
+  ⚠️ **Actie voor live**: de migratie moet nog in het live Supabase-project worden gedraaid
+  (zoals eerder bij de Lesplannen-/archiverings-migraties).
+
 - **2026-07-25 — QR-scan vóór inloggen springt naar home in plaats van naar het gescande item**
   Opgelost: `ProtectedRoute` geeft de oorspronkelijke locatie mee via `state.from` bij de
   redirect naar `/login`, en de login/registratie-routes in `App.jsx` sturen na inloggen naar

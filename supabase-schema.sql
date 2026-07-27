@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS reserveringen (
   van_datum       DATE NOT NULL,
   tot_datum       DATE NOT NULL CHECK (tot_datum >= van_datum),
   toelichting     TEXT,
-  status          TEXT NOT NULL DEFAULT 'actief' CHECK (status IN ('actief', 'geannuleerd', 'opgehaald')),
+  -- actief=gereserveerd · opgehaald=opgehaald & loopt nog · teruggebracht=afgerond · geannuleerd=vervallen vóór gebruik
+  status          TEXT NOT NULL DEFAULT 'actief' CHECK (status IN ('actief', 'geannuleerd', 'opgehaald', 'teruggebracht')),
   aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -664,6 +664,7 @@ export function mockInchecken(materiaalId, medewerkerId, locatie, vorigeLocatie)
         id: uuid(), materiaal_id: materiaalId, medewerker_id: medewerkerId,
         type, locatie, tijdstip: new Date().toISOString(), notitie: null,
     })
+    sluitOpgehaaldeReservering(db, materiaalId)
     saveDB(db)
 }
 
@@ -682,7 +683,19 @@ export function mockOverrule(materiaalId, medewerkerId, medewerkernaam, vorigeMe
         type: 'overrule', locatie, tijdstip: new Date().toISOString(),
         notitie: `Overrule van medewerker ID: ${vorigeMedewerkerId}`,
     })
+    sluitOpgehaaldeReservering(db, materiaalId)
     saveDB(db)
+}
+
+// Interne helper: markeer de lopende (opgehaalde) reservering van een item
+// als 'teruggebracht' wanneer het materiaal wordt ingecheckt/overruled.
+function sluitOpgehaaldeReservering(db, materiaalId) {
+    if (!db.reserveringen) return
+    db.reserveringen = db.reserveringen.map(r =>
+        r.materiaal_id === materiaalId && r.status === 'opgehaald'
+            ? { ...r, status: 'teruggebracht' }
+            : r
+    )
 }
 
 export function mockGetUitgecheckt() {
@@ -1009,11 +1022,14 @@ function enrichReservering(r, db) {
     }
 }
 
+const LOPEND = ['actief', 'opgehaald']
+
 export function mockGetAlleReserveringen() {
     const db = getDB()
     if (!db.reserveringen) return []
+    const vandaag = new Date().toISOString().slice(0, 10)
     return db.reserveringen
-        .filter(r => r.status === 'actief')
+        .filter(r => LOPEND.includes(r.status) && r.tot_datum >= vandaag)
         .map(r => enrichReservering(r, db))
         .sort((a, b) => a.van_datum.localeCompare(b.van_datum))
 }
@@ -1023,7 +1039,7 @@ export function mockGetReserveringenVoorItem(materiaalId) {
     if (!db.reserveringen) return []
     const vandaag = new Date().toISOString().slice(0, 10)
     return db.reserveringen
-        .filter(r => r.materiaal_id === materiaalId && r.status === 'actief' && r.tot_datum >= vandaag)
+        .filter(r => r.materiaal_id === materiaalId && LOPEND.includes(r.status) && r.tot_datum >= vandaag)
         .map(r => enrichReservering(r, db))
         .sort((a, b) => a.van_datum.localeCompare(b.van_datum))
 }
@@ -1033,9 +1049,19 @@ export function mockGetMijnReserveringen(medewerkerId) {
     if (!db.reserveringen) return []
     const vandaag = new Date().toISOString().slice(0, 10)
     return db.reserveringen
-        .filter(r => r.medewerker_id === medewerkerId && r.status === 'actief' && r.tot_datum >= vandaag)
+        .filter(r => r.medewerker_id === medewerkerId && LOPEND.includes(r.status) && r.tot_datum >= vandaag)
         .map(r => enrichReservering(r, db))
         .sort((a, b) => a.van_datum.localeCompare(b.van_datum))
+}
+
+export function mockGetGearchiveerdeReserveringen() {
+    const db = getDB()
+    if (!db.reserveringen) return []
+    return db.reserveringen
+        .filter(r => r.status === 'teruggebracht' || r.status === 'geannuleerd')
+        .map(r => enrichReservering(r, db))
+        .sort((a, b) => b.van_datum.localeCompare(a.van_datum))
+        .slice(0, 100)
 }
 
 export function mockMaakReservering({ materiaalId, medewerkerId, vanDatum, totDatum, toelichting }) {
@@ -1071,6 +1097,13 @@ export function mockMarkeerOpgehaald(reserveringId) {
     const idx = db.reserveringen.findIndex(r => r.id === reserveringId)
     if (idx === -1) throw new Error('Reservering niet gevonden')
     db.reserveringen[idx] = { ...db.reserveringen[idx], status: 'opgehaald' }
+    saveDB(db)
+}
+
+export function mockMarkeerTeruggebracht(materiaalId) {
+    const db = getDB()
+    if (!db.reserveringen) return
+    sluitOpgehaaldeReservering(db, materiaalId)
     saveDB(db)
 }
 

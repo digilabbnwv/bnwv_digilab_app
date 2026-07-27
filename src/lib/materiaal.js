@@ -110,6 +110,10 @@ export async function inchecken(materiaalId, medewerkerId, locatie, vorigeLocati
         type, locatie, tijdstip: new Date().toISOString(),
     }])
     if (l) throw l
+
+    // Terugbrengen sluit een eventuele opgehaalde reservering af
+    const { markeerTeruggebracht } = await import('./reserveringen')
+    await markeerTeruggebracht(materiaalId)
 }
 
 export async function overrule(materiaalId, medewerkerId, medewerkernaam, vorigeMedewerkerId, locatie) {
@@ -126,6 +130,10 @@ export async function overrule(materiaalId, medewerkerId, medewerkernaam, vorige
         notitie: `Overrule van medewerker ID: ${vorigeMedewerkerId}`,
     }])
     if (l) throw l
+
+    // Overrule brengt het materiaal terug: sluit een eventuele opgehaalde reservering af
+    const { markeerTeruggebracht } = await import('./reserveringen')
+    await markeerTeruggebracht(materiaalId)
 }
 
 export async function getTransacties(materiaalId) {

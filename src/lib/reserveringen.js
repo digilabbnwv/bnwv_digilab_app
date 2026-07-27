@@ -3,7 +3,11 @@
  *
  * Data model:
  *   reserveringen (id, materiaal_id, medewerker_id, van_datum, tot_datum,
- *                  toelichting, status: 'actief'|'geannuleerd'|'opgehaald', aangemaakt_op)
+ *                  toelichting, status: 'actief'|'opgehaald'|'teruggebracht'|'geannuleerd', aangemaakt_op)
+ *
+ * Levenscyclus: actief (gereserveerd) -> opgehaald (opgehaald, loopt nog)
+ *   -> teruggebracht (afgerond na inchecken). 'geannuleerd' = vervallen vóór gebruik.
+ *   Lopende overzichten tonen actief + opgehaald; archief toont teruggebracht + geannuleerd.
  *
  * Toekomstige kalender-integratie:
  *   De van_datum/tot_datum velden zijn ISO 8601 datums (YYYY-MM-DD).
@@ -21,8 +25,12 @@ import { syncAgendaAanmaken, syncAgendaAnnuleren } from './agendaSync'
 import {
     mockGetAlleReserveringen, mockGetReserveringenVoorItem,
     mockGetMijnReserveringen, mockMaakReservering, mockAnnuleerReservering,
-    mockMarkeerOpgehaald,
+    mockMarkeerOpgehaald, mockMarkeerTeruggebracht, mockGetGearchiveerdeReserveringen,
 } from './mockDB'
+
+// Statussen die als 'lopend' gelden en in de standaardoverzichten thuishoren:
+// een reservering is gereserveerd (actief) óf opgehaald maar nog niet terug (opgehaald).
+export const LOPENDE_STATUSSEN = ['actief', 'opgehaald']
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
@@ -34,7 +42,7 @@ export async function getAlleReserveringen() {
     const { data, error } = await supabase
         .from('reserveringen')
         .select('*, materiaal(id, naam, type, qr_code), medewerker:medewerkers(id, naam)')
-        .eq('status', 'actief')
+        .in('status', LOPENDE_STATUSSEN)
         .gte('tot_datum', new Date().toISOString().slice(0, 10))
         .order('van_datum')
     if (error) throw error
@@ -49,7 +57,7 @@ export async function getReserveringenVoorItem(materiaalId) {
         .from('reserveringen')
         .select('*, medewerker:medewerkers(id, naam)')
         .eq('materiaal_id', materiaalId)
-        .eq('status', 'actief')
+        .in('status', LOPENDE_STATUSSEN)
         .gte('tot_datum', vandaag)
         .order('van_datum')
     if (error) throw error
@@ -64,7 +72,7 @@ export async function getMijnReserveringen(medewerkerId) {
         .from('reserveringen')
         .select('*, materiaal(id, naam, type, qr_code)')
         .eq('medewerker_id', medewerkerId)
-        .eq('status', 'actief')
+        .in('status', LOPENDE_STATUSSEN)
         .gte('tot_datum', vandaag)
         .order('van_datum')
     if (error) throw error
@@ -245,6 +253,40 @@ export async function markeerOpgehaald(reserveringId) {
         .update({ status: 'opgehaald' })
         .eq('id', reserveringId)
     if (error) throw error
+}
+
+/**
+ * Sluit de lopende (opgehaalde) reservering van een materiaalitem af.
+ * Aangeroepen bij inchecken/overrule: het terugbrengen van het materiaal
+ * markeert de bijbehorende reservering als 'teruggebracht' (afgerond).
+ * No-op als er geen opgehaalde reservering voor dit item is (bijv. ad-hoc gebruik).
+ */
+export async function markeerTeruggebracht(materiaalId) {
+    if (MOCK) return mockMarkeerTeruggebracht(materiaalId)
+
+    const { error } = await supabase
+        .from('reserveringen')
+        .update({ status: 'teruggebracht' })
+        .eq('materiaal_id', materiaalId)
+        .eq('status', 'opgehaald')
+    if (error) throw error
+}
+
+/**
+ * Afgeronde reserveringen voor de archief-/historieweergave:
+ * teruggebracht (netjes afgerond) + geannuleerd (vervallen vóór gebruik).
+ */
+export async function getGearchiveerdeReserveringen() {
+    if (MOCK) return mockGetGearchiveerdeReserveringen()
+
+    const { data, error } = await supabase
+        .from('reserveringen')
+        .select('*, materiaal(id, naam, type, qr_code), medewerker:medewerkers(id, naam)')
+        .in('status', ['teruggebracht', 'geannuleerd'])
+        .order('van_datum', { ascending: false })
+        .limit(100)
+    if (error) throw error
+    return data
 }
 
 /**

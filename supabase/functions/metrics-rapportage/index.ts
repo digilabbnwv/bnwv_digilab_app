@@ -117,7 +117,7 @@ async function bouwWekelijksRapport(supabaseAdmin: ReturnType<typeof createClien
   const { data: reserveringen } = await supabaseAdmin
     .from('reserveringen')
     .select('materiaal_id, van_datum, tot_datum')
-    .eq('status', 'actief')
+    .in('status', ['actief', 'opgehaald'])
     .gte('tot_datum', vanaf)
 
   const { data: openMeldingen } = alleMateriaalIds.length > 0
@@ -193,11 +193,15 @@ async function bouwMaandelijksRapport(supabaseAdmin: ReturnType<typeof createCli
     .sort((a, b) => (b[1] as number) - (a[1] as number))
   const nietIngelogd = (medewerkers ?? []).filter(m => !loginTelling.has(m.id)).map(m => m.naam)
 
-  // Reserveringen per medewerker/status
+  // Reserveringen per medewerker/status.
+  // 'opgehaald' telt opgehaalde én al teruggebrachte reserveringen samen: beide
+  // vertegenwoordigen een daadwerkelijk opgehaald item (teruggebracht = opgehaald + afgerond).
   const reserveringTelling = new Map<string, { actief: number, geannuleerd: number, opgehaald: number }>()
   for (const r of reserveringen ?? []) {
     const huidig = reserveringTelling.get(r.medewerker_id) ?? { actief: 0, geannuleerd: 0, opgehaald: 0 }
-    huidig[r.status as 'actief' | 'geannuleerd' | 'opgehaald']++
+    if (r.status === 'opgehaald' || r.status === 'teruggebracht') huidig.opgehaald++
+    else if (r.status === 'geannuleerd') huidig.geannuleerd++
+    else if (r.status === 'actief') huidig.actief++
     reserveringTelling.set(r.medewerker_id, huidig)
   }
   const reserveringRijen = [...reserveringTelling.entries()].map(([medId, t]) =>
