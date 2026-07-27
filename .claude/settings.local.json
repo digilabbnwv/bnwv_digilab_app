@@ -11,7 +11,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(dir C:\\\\dev\\\\bnwv_digilab_app)",
-      "PowerShell($env:PATH = \"C:\\\\dev\\\\bnwv_digilab_app\\\\node_bin;$env:PATH\"; cd C:\\\\dev\\\\bnwv_digilab_app; node node_modules/vite/bin/vite.js build 2>&1 | Select-Object -Last 20)"
+      "PowerShell($env:PATH = \"C:\\\\dev\\\\bnwv_digilab_app\\\\node_bin;$env:PATH\"; cd C:\\\\dev\\\\bnwv_digilab_app; node node_modules/vite/bin/vite.js build 2>&1 | Select-Object -Last 20)",
+      "WebFetch(domain:www.actualisatiekerndoelen.nl)"
     ]
   }
 }
