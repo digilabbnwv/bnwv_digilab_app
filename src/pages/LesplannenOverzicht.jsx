@@ -95,7 +95,7 @@ export default function LesplannenOverzicht() {
     }, [items, zoekterm, doelgroepFilter, labelFilter, materiaalFilter, kerndoelFilter])
 
     return (
-        <div className="app-container pt-8 pb-4 animate-fadeIn">
+        <div className="app-container lg:max-w-6xl pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-text-primary">Lesplannen</h1>
                 {isBeheerder && (
@@ -106,7 +106,7 @@ export default function LesplannenOverzicht() {
             </div>
 
             {/* Zoekbalk */}
-            <div className="relative mb-3">
+            <div className="relative mb-3 lg:max-w-md">
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input
                     type="search"
@@ -153,7 +153,7 @@ export default function LesplannenOverzicht() {
                     <p className="text-text-muted text-sm">Geen lesplannen gevonden</p>
                 </div>
             ) : (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
                     {gefilterd.map(item => (
                         <Link
                             key={item.id}

@@ -63,7 +63,7 @@ export default function MateriaalOverzicht() {
     ]
 
     return (
-        <div className="app-container pt-8 pb-4 animate-fadeIn">
+        <div className="app-container lg:max-w-6xl pt-8 pb-4 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-text-primary">Materiaal</h1>
                 <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ export default function MateriaalOverzicht() {
             </div>
 
             {/* Zoekbalk */}
-            <div className="relative mb-3">
+            <div className="relative mb-3 lg:max-w-md">
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input
                     type="search"
@@ -189,7 +189,7 @@ export default function MateriaalOverzicht() {
                     <p className="text-text-muted text-sm">Geen items gevonden</p>
                 </div>
             ) : (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
                     {gefilterd.map(item => {
                         const openMeldingen = item.onderhoudsmeldingen?.filter(m => m.status === 'open') || []
                         return (

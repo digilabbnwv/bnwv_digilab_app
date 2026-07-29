@@ -12,7 +12,7 @@ const navItems = [
 
 export default function BottomNav() {
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-surface/95 backdrop-blur-xl border-t border-overlay/10 safe-area-inset-bottom">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-bg-surface/95 backdrop-blur-xl border-t border-overlay/10 safe-area-inset-bottom">
             <div className="flex items-center justify-around px-1 py-2 max-w-3xl mx-auto">
                 {navItems.map((item) => {
                     const IconComp = item.icon

@@ -25,6 +25,7 @@ import WorkshopInplannen from './pages/WorkshopInplannen'
 import GeplandeWorkshopDetail from './pages/GeplandeWorkshopDetail'
 import PlanningGenereren from './pages/PlanningGenereren'
 import BottomNav from './components/BottomNav'
+import SideNav from './components/SideNav'
 import AppHeader from './components/AppHeader'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
@@ -64,13 +65,16 @@ function BeheerderRoute({ children }) {
 
 function PageLayout({ children }) {
   return (
-    <div className="flex flex-col min-h-dvh">
-      <div className={MOCK ? 'pt-6' : ''}>
-        <AppHeader />
+    <div className="lg:flex">
+      <SideNav />
+      <div className="flex flex-col min-h-dvh flex-1 min-w-0">
+        <div className={MOCK ? 'pt-6' : ''}>
+          <AppHeader />
+        </div>
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-10">
+          {children}
+        </main>
       </div>
-      <main className="flex-1 overflow-y-auto pb-20">
-        {children}
-      </main>
       <BottomNav />
     </div>
   )

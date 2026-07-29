@@ -86,7 +86,7 @@ export default function MateriaalSelect({ items, value, onChange, placeholder = 
             )}
 
             {open && (
-                <div className="absolute z-30 mt-2 w-full max-h-64 overflow-y-auto card p-1 shadow-2xl">
+                <div className="mt-2 w-full max-h-64 overflow-y-auto card p-1 shadow-2xl">
                     {gefilterd.length === 0 ? (
                         <p className="text-text-muted text-sm text-center py-4">Geen materiaal gevonden</p>
                     ) : (

@@ -311,7 +311,7 @@ export default function ReserverenPagina() {
     const vandaag = vandaagStr()
 
     return (
-        <div className="app-container pt-8 pb-4 animate-fadeIn">
+        <div className="app-container lg:max-w-6xl pt-8 pb-4 animate-fadeIn">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
@@ -351,9 +351,10 @@ export default function ReserverenPagina() {
             </div>
 
             {loading ? <LaadIndicator /> : tab === 'kalender' ? (
-                <>
+                <div className="lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+                    <div>
                     {/* Maand navigatie */}
-                    <div className="card p-4 mb-4">
+                    <div className="card p-4 mb-4 lg:mb-0">
                         <div className="flex items-center justify-between mb-4">
                             <button onClick={vorigeMaand} className="p-2 rounded-lg hover:bg-bg-hover transition-colors text-text-muted">
                                 <ChevronLeft size={20} />
@@ -451,9 +452,10 @@ export default function ReserverenPagina() {
                             )}
                         </div>
                     )}
+                    </div>
 
                     {/* Reserveringen voor geselecteerde dag / maand */}
-                    <div>
+                    <div className="mt-4 lg:mt-0">
                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
                             {gekozenDag
                                 ? `${formatDatum(gekozenDag)} — ${geselecteerdeRes.length} reservering${geselecteerdeRes.length !== 1 ? 'en' : ''}`
@@ -467,7 +469,7 @@ export default function ReserverenPagina() {
                             onAnnuleer={setAnnuleerDoel}
                         />
                     </div>
-                </>
+                </div>
             ) : tab === 'alle' ? (
                 /* Alle reserveringen — lijstweergave komende 12 maanden */
                 <div>
@@ -679,7 +681,7 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, to
     }
 
     return (
-        <div className="space-y-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-2">
             {reserveringen.map(r => {
                 if (r._isWorkshop) {
                     // Workshop-kaart
