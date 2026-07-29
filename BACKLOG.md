@@ -5,6 +5,22 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
 
 ## Open
 
+- **2026-07-29 — Lesbrieven-authoring + digitale leerlijn (grote feature)**
+  Beheerders kunnen volwaardige lesbrieven maken: gestructureerde inhoud (lesomschrijving,
+  leerdoelen, voorbereiding, lesverloop, differentiatie, evaluatie, tips…), échte bestands-uploads
+  (presentaties/werkbladen via een nieuwe Storage-bucket `lesmateriaal`, patroon = `uploadFoto`),
+  gekoppeld materiaal, genummerde **lessenseries** (Micro:Bit basis → verdieping), een eigen
+  **thema's**-tabel, en per kerndoel een **diepgang** (`kennismaking`/`verdieping`/`beheersing`).
+  Gepubliceerde lessen (`status concept/gepubliceerd`) verschijnen in het bestaande
+  Lesplannen-overzicht; dit **vervangt** de huidige upload (`bestand_url`). Nieuw: een
+  `/leerlijn`-pagina met een dekkingsmatrix kerndoelen × jaargroepen, ingekleurd naar diepgang,
+  met hiaten zichtbaar en **meerdere lessen per cel** (verschillende lessen kunnen hetzelfde
+  kerndoel/niveau/groep dekken). Bouwt vóórt op het bestaande `lesplannen`-model + junctions;
+  `leerlijn` is het enige volledig nieuwe begrip. Aanpak in 2 fases (1: datamodel + authoring +
+  bestanden + overzicht; 2: leerlijn-matrix). Volledige uitwerking, datamodel en openstaande
+  keuzes: [docs/lesbrieven-plan.md](docs/lesbrieven-plan.md). Besluiten met Jasper 2026-07-29:
+  lessenserie (genummerd), eigen thema's-tabel, diepgang-niveau, cel = verzameling lessen.
+
 - **2026-07-24 — Responsive/desktop-indeling voor beheerders op laptop**
   Open vraag, nog geen besluit. Jasper werkt als beheerder vooral op laptop en zou graag meer
   schermruimte benut zien. Advies (zie gesprek 2026-07-24): geen aparte desktop-IA (hoge
@@ -12,6 +28,22 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
   responsive-aanpassingen per pagina — vanaf een `lg:`-breakpoint de bottom-nav vervangen door
   een zijbalk en kaartenlijsten (Materiaal, Lesplannen, Workshops) in een grid van 2-3 kolommen
   i.p.v. gestapeld. Blijft dezelfde componenten/code, dus blijft vanzelf in sync met mobiel.
+
+  _Aanscherping 2026-07-29 (n.a.v. lesbrieven-feature):_ de schermen die het meest van
+  laptopbreedte profiteren zijn juist de nieuwe — het authoring-formulier en de leerlijn-matrix —
+  dus responsive hoort bij "lesbrieven goed doen", niet erna. Drie lagen:
+  (1) **Shell**: vanaf `lg:` bottom-nav → vaste zijbalk links (eenmalig, raakt alle pagina's).
+  (2) **Authoring-formulier**: op `lg:` een tweekoloms **editor + sticky rail** — brede
+  linkerkolom voor de inhoud (titel, omschrijving, lesverloop, leerdoelen), smalle rechter-rail
+  voor koppelingen + acties (thema, serie, doelgroepen, kerndoelen + diepgang, materiaal,
+  bestanden, concept/publiceren altijd in beeld). Onder `lg:` klapt dit terug naar één gestapelde
+  kolom — zelfde velden/componenten. Mockup: gespreksartifact `lesbrief_authoring_editor_rail_desktop`.
+  (3) **Overzichten**: op `lg:` kaarten in 2-3 kolommen; leerlijn-matrix desktop-first breed, met
+  horizontaal scrollen als terugval op smal.
+  Voorstel: laag 2 en 3 in de lesbrieven-bouw vouwen (fase 1 = formulier als editor+rail,
+  fase 2 = brede matrix). Laag 1 (zijbalk-shell) als kleine zelfstandige stap vooraf.
+  Te bevestigen bij de bouw: shell-omslag meteen meenemen of per-pagina responsive eerst.
+  Zie de lesbrieven-feature hierboven en [docs/lesbrieven-plan.md](docs/lesbrieven-plan.md).
 
 ## Opgelost
 
