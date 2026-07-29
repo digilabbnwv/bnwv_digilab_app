@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getAllLesplannen } from '../lib/lesplannen'
 import { LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
-import { Search, GraduationCap, Plus, SlidersHorizontal, ChevronDown, Tag, Users, Package, Target, ExternalLink } from 'lucide-react'
+import { Search, GraduationCap, Plus, SlidersHorizontal, ChevronDown, Tag, Users, Package, Target, FileText, Network, Settings } from 'lucide-react'
 
 function ChipGroep({ label, icon, opties, geselecteerd, onToggle, render }) {
     const Icon = icon
@@ -41,7 +41,7 @@ export default function LesplannenOverzicht() {
     const [zoekterm, setZoekterm] = useState('')
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [doelgroepFilter, setDoelgroepFilter] = useState([])
-    const [labelFilter, setLabelFilter] = useState([])
+    const [themaFilter, setThemaFilter] = useState([])
     const [materiaalFilter, setMateriaalFilter] = useState([])
     const [kerndoelFilter, setKerndoelFilter] = useState([])
 
@@ -61,10 +61,10 @@ export default function LesplannenOverzicht() {
         return [...map.values()].sort((a, b) => a.volgorde - b.volgorde)
     }, [items])
 
-    const beschikbareLabels = useMemo(() => {
+    const beschikbareThemas = useMemo(() => {
         const map = new Map()
-        items.forEach(i => (i.labels || []).forEach(l => map.set(l.id, l)))
-        return [...map.values()].sort((a, b) => a.naam.localeCompare(b.naam))
+        items.forEach(i => (i.themas || []).forEach(t => map.set(t.id, t)))
+        return [...map.values()].sort((a, b) => (a.volgorde || 0) - (b.volgorde || 0) || a.naam.localeCompare(b.naam))
     }, [items])
 
     const beschikbaarMateriaal = useMemo(() => {
@@ -79,30 +79,42 @@ export default function LesplannenOverzicht() {
         return [...map.values()].sort((a, b) => a.vakgebied.localeCompare(b.vakgebied) || a.code.localeCompare(b.code))
     }, [items])
 
-    const aantalActieveFilters = doelgroepFilter.length + labelFilter.length + materiaalFilter.length + kerndoelFilter.length
+    const aantalActieveFilters = doelgroepFilter.length + themaFilter.length + materiaalFilter.length + kerndoelFilter.length
 
     const gefilterd = useMemo(() => {
         let res = items
+        // Medewerkers zien alleen gepubliceerde lesbrieven; beheerders zien ook concepten.
+        if (!isBeheerder) res = res.filter(i => i.status === 'gepubliceerd')
         if (zoekterm) {
             const q = zoekterm.toLowerCase()
             res = res.filter(i => i.titel?.toLowerCase().includes(q) || i.omschrijving?.toLowerCase().includes(q))
         }
         if (doelgroepFilter.length) res = res.filter(i => i.doelgroepen?.some(d => doelgroepFilter.includes(d.id)))
-        if (labelFilter.length) res = res.filter(i => i.labels?.some(l => labelFilter.includes(l.id)))
+        if (themaFilter.length) res = res.filter(i => i.themas?.some(t => themaFilter.includes(t.id)))
         if (materiaalFilter.length) res = res.filter(i => i.materiaal?.some(m => materiaalFilter.includes(m.id)))
         if (kerndoelFilter.length) res = res.filter(i => i.kerndoelen?.some(k => kerndoelFilter.includes(k.id)))
         return res
-    }, [items, zoekterm, doelgroepFilter, labelFilter, materiaalFilter, kerndoelFilter])
+    }, [items, isBeheerder, zoekterm, doelgroepFilter, themaFilter, materiaalFilter, kerndoelFilter])
 
     return (
         <div className="app-container lg:max-w-6xl pt-8 pb-4 animate-fadeIn">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 gap-2">
                 <h1 className="text-2xl font-bold text-text-primary">Lesplannen</h1>
-                {isBeheerder && (
-                    <Link to="/lesplannen/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
-                        <Plus size={16} /> Nieuw
+                <div className="flex items-center gap-2">
+                    <Link to="/leerlijn" className="btn-ghost py-2 px-3 text-sm flex items-center gap-2" aria-label="Leerlijn">
+                        <Network size={16} /> <span className="hidden sm:inline">Leerlijn</span>
                     </Link>
-                )}
+                    {isBeheerder && (
+                        <Link to="/lesplannen/beheer" className="btn-ghost py-2 px-3 text-sm flex items-center gap-2" aria-label="Thema's en series beheren">
+                            <Settings size={16} /> <span className="hidden sm:inline">Beheer</span>
+                        </Link>
+                    )}
+                    {isBeheerder && (
+                        <Link to="/lesplannen/nieuw" className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                            <Plus size={16} /> Nieuw
+                        </Link>
+                    )}
+                </div>
             </div>
 
             {/* Zoekbalk */}
@@ -135,7 +147,7 @@ export default function LesplannenOverzicht() {
             {filtersOpen && (
                 <div className="card p-4 mb-4">
                     <ChipGroep label="Doelgroep" icon={Users} opties={beschikbareDoelgroepen} geselecteerd={doelgroepFilter} onToggle={toggle(setDoelgroepFilter)} />
-                    <ChipGroep label="Thema" icon={Tag} opties={beschikbareLabels} geselecteerd={labelFilter} onToggle={toggle(setLabelFilter)} />
+                    <ChipGroep label="Thema" icon={Tag} opties={beschikbareThemas} geselecteerd={themaFilter} onToggle={toggle(setThemaFilter)} />
                     <ChipGroep label="Materiaal" icon={Package} opties={beschikbaarMateriaal} geselecteerd={materiaalFilter} onToggle={toggle(setMateriaalFilter)} />
                     <ChipGroep
                         label="Kerndoel" icon={Target} opties={beschikbareKerndoelen}
@@ -166,7 +178,10 @@ export default function LesplannenOverzicht() {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <p className="font-medium text-text-primary truncate">{item.titel}</p>
-                                    {item.bestand_url && <ExternalLink size={13} className="text-text-muted flex-shrink-0" />}
+                                    {item.status === 'concept' && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 flex-shrink-0">Concept</span>
+                                    )}
+                                    {item.bestanden?.length > 0 && <FileText size={13} className="text-text-muted flex-shrink-0" />}
                                 </div>
                                 {item.omschrijving && (
                                     <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{item.omschrijving}</p>
@@ -174,15 +189,15 @@ export default function LesplannenOverzicht() {
                                 {item.doelgroepen?.length > 0 && (
                                     <p className="text-xs text-text-muted mt-1">{item.doelgroepen.map(d => d.naam).join(', ')}</p>
                                 )}
-                                {item.labels?.length > 0 && (
+                                {item.themas?.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-1.5">
-                                        {item.labels.map(label => (
+                                        {item.themas.map(t => (
                                             <span
-                                                key={label.id}
+                                                key={t.id}
                                                 className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white"
-                                                style={{ backgroundColor: label.kleur || '#64748B' }}
+                                                style={{ backgroundColor: t.kleur || '#64748B' }}
                                             >
-                                                {label.naam}
+                                                {t.naam}
                                             </span>
                                         ))}
                                     </div>

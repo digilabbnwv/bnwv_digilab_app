@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Package, CalendarCheck, BookOpen, GraduationCap } from 'lucide-react'
+import { LayoutDashboard, Package, CalendarCheck, BookOpen, GraduationCap, Network } from 'lucide-react'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
@@ -10,6 +10,7 @@ const navItems = [
     { to: '/reserveren', icon: CalendarCheck, label: 'Reserveren' },
     { to: '/workshops', icon: BookOpen, label: 'Workshops' },
     { to: '/lesplannen', icon: GraduationCap, label: 'Lesplannen' },
+    { to: '/leerlijn', icon: Network, label: 'Leerlijn' },
 ]
 
 export default function SideNav() {

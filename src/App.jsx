@@ -18,6 +18,8 @@ import ProfielPagina from './pages/ProfielPagina'
 import HelpPagina from './pages/HelpPagina'
 import LesplannenOverzicht from './pages/LesplannenOverzicht'
 import LesplanDetail from './pages/LesplanDetail'
+import LesbriefBeheer from './pages/LesbriefBeheer'
+import Leerlijn from './pages/Leerlijn'
 import WorkshopCatalogus from './pages/WorkshopCatalogus'
 import WorkshopTemplateDetail from './pages/WorkshopTemplateDetail'
 import Kalender from './pages/Kalender'
@@ -126,7 +128,11 @@ export default function App() {
         {/* Lesplannen */}
         <Route path="/lesplannen" element={<ProtectedRoute><PageLayout><LesplannenOverzicht /></PageLayout></ProtectedRoute>} />
         <Route path="/lesplannen/nieuw" element={<BeheerderRoute><PageLayout><LesplanDetail /></PageLayout></BeheerderRoute>} />
+        <Route path="/lesplannen/beheer" element={<BeheerderRoute><PageLayout><LesbriefBeheer /></PageLayout></BeheerderRoute>} />
         <Route path="/lesplannen/:id" element={<ProtectedRoute><PageLayout><LesplanDetail /></PageLayout></ProtectedRoute>} />
+
+        {/* Leerlijn */}
+        <Route path="/leerlijn" element={<ProtectedRoute><PageLayout><Leerlijn /></PageLayout></ProtectedRoute>} />
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />
