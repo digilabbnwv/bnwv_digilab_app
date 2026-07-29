@@ -155,7 +155,19 @@ CREATE TABLE IF NOT EXISTS lesplannen (
   id                      UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   titel                   TEXT NOT NULL,
   omschrijving            TEXT,
-  bestand_url             TEXT,           -- link naar document; later evt. Supabase Storage-URL (zelfde kolom)
+  status                  TEXT NOT NULL DEFAULT 'concept' CHECK (status IN ('concept', 'gepubliceerd')),
+  lesduur_minuten         INTEGER,
+  groepsgrootte           TEXT,
+  voorbereiding           TEXT,
+  benodigdheden           TEXT,
+  lesverloop_intro        TEXT,
+  lesverloop_kern         TEXT,
+  lesverloop_afsluiting   TEXT,
+  differentiatie          TEXT,
+  evaluatie               TEXT,
+  tips                    TEXT,
+  leerdoelen              JSONB NOT NULL DEFAULT '[]'::jsonb,
+  bestand_url             TEXT,           -- uitgefaseerd; echte bestanden staan in lesplan_bestanden
   aangemaakt_door         UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
   aangemaakt_op           TIMESTAMPTZ DEFAULT NOW(),
   laatst_bijgewerkt_op    TIMESTAMPTZ DEFAULT NOW()
@@ -190,6 +202,7 @@ CREATE TABLE IF NOT EXISTS lesplan_doelgroepen (
 CREATE TABLE IF NOT EXISTS lesplan_kerndoelen (
   lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
   kerndoel_id     UUID NOT NULL REFERENCES kerndoelen(id) ON DELETE CASCADE,
+  diepgang        TEXT CHECK (diepgang IN ('kennismaking', 'verdieping', 'beheersing')),
   PRIMARY KEY (lesplan_id, kerndoel_id)
 );
 
@@ -209,6 +222,47 @@ CREATE TABLE IF NOT EXISTS lesplan_materiaal (
   lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
   materiaal_id    UUID NOT NULL REFERENCES materiaal(id) ON DELETE CASCADE,
   PRIMARY KEY (lesplan_id, materiaal_id)
+);
+
+-- 10e. Thema's — eigen begrip voor lessen (los van materiaal-labels) + koppeling
+CREATE TABLE IF NOT EXISTS themas (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  naam            TEXT NOT NULL UNIQUE,
+  kleur           TEXT,
+  volgorde        INTEGER,
+  aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS lesplan_themas (
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  thema_id        UUID NOT NULL REFERENCES themas(id) ON DELETE CASCADE,
+  PRIMARY KEY (lesplan_id, thema_id)
+);
+
+-- 10f. Lessenseries — geordende reeksen lessen; volgorde staat op de koppeling
+CREATE TABLE IF NOT EXISTS lessenseries (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  naam            TEXT NOT NULL,
+  omschrijving    TEXT,
+  aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS lesplan_series (
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  serie_id        UUID NOT NULL REFERENCES lessenseries(id) ON DELETE CASCADE,
+  volgorde        INTEGER,
+  PRIMARY KEY (lesplan_id, serie_id)
+);
+
+-- 10g. Bestanden bij een lesplan (presentaties/werkbladen; Supabase Storage-URL's)
+CREATE TABLE IF NOT EXISTS lesplan_bestanden (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  lesplan_id      UUID NOT NULL REFERENCES lesplannen(id) ON DELETE CASCADE,
+  bestand_url     TEXT NOT NULL,
+  bestandsnaam    TEXT,
+  soort           TEXT CHECK (soort IN ('presentatie', 'werkblad', 'handleiding', 'overig')),
+  grootte_bytes   INTEGER,
+  aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================
@@ -269,6 +323,11 @@ ALTER TABLE lesplan_kerndoelen  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lesplan_labels      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lesplan_workshops   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lesplan_materiaal   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE themas              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lessenseries        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_themas      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_series      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesplan_bestanden   ENABLE ROW LEVEL SECURITY;
 
 -- Iedereen mag lezen; schrijven beperkt tot beheerders in de app-laag
 CREATE POLICY "Iedereen kan medewerkers zien" ON medewerkers
@@ -332,6 +391,21 @@ CREATE POLICY "Iedereen kan lesplan_workshops zien en beheren" ON lesplan_worksh
   FOR ALL USING (true);
 
 CREATE POLICY "Iedereen kan lesplan_materiaal zien en beheren" ON lesplan_materiaal
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan themas zien en beheren" ON themas
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lessenseries zien en beheren" ON lessenseries
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_themas zien en beheren" ON lesplan_themas
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_series zien en beheren" ON lesplan_series
+  FOR ALL USING (true);
+
+CREATE POLICY "Iedereen kan lesplan_bestanden zien en beheren" ON lesplan_bestanden
   FOR ALL USING (true);
 
 -- ============================================================

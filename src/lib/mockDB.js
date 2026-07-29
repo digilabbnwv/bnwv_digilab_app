@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 11
+const DB_VERSION = 12
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -332,46 +332,105 @@ export async function initMockDB() {
     ]
     const vindKerndoel = (code, sector) => kerndoelen.find(k => k.code === code && k.sector === sector)
 
-    const lp = (titel, omschrijving, bestandUrl) => ({
-        id: uuid(), titel, omschrijving, bestand_url: bestandUrl,
+    // Thema's — eigen begrip voor lessen, los van materiaal-labels
+    const themaId = {}
+    const themas = [
+        { naam: 'Programmeren', kleur: '#E8772E', volgorde: 1 },
+        { naam: 'Robotica', kleur: '#3B82F6', volgorde: 2 },
+        { naam: 'Mediawijsheid', kleur: '#A855F7', volgorde: 3 },
+        { naam: 'Digitaal burgerschap', kleur: '#10B981', volgorde: 4 },
+    ].map(t => { const id = uuid(); themaId[t.naam] = id; return { id, ...t, aangemaakt_op: new Date().toISOString() } })
+
+    // Lessenseries — geordende reeksen lessen
+    const serieId = {}
+    const lessenseries = [
+        { naam: 'Micro:Bit-lijn', omschrijving: 'Doorlopende lijn rond de Micro:bit, van kennismaking naar verdieping.' },
+    ].map(s => { const id = uuid(); serieId[s.naam] = id; return { id, ...s, aangemaakt_op: new Date().toISOString() } })
+
+    const lp = (titel, omschrijving, extra = {}) => ({
+        id: uuid(), titel, omschrijving,
+        status: 'gepubliceerd',
+        lesduur_minuten: null, groepsgrootte: null,
+        voorbereiding: null, benodigdheden: null,
+        lesverloop_intro: null, lesverloop_kern: null, lesverloop_afsluiting: null,
+        differentiatie: null, evaluatie: null, tips: null,
+        leerdoelen: [],
+        bestand_url: null, // uitgefaseerd; echte bestanden staan in lesplan_bestanden
         aangemaakt_door: med1Id,
         aangemaakt_op: new Date().toISOString(),
         laatst_bijgewerkt_op: new Date().toISOString(),
+        ...extra,
     })
     const lesplannen = [
-        lp('Programmeren met de Micro:bit', 'Leerlingen maken kennis met blokprogrammeren via MakeCode en besturen de LED-matrix van hun Micro:bit.', 'https://example.com/lesbrief-microbit.pdf'),
-        lp('Mediawijsheid: nepnieuws herkennen', 'Leerlingen leren betrouwbare van onbetrouwbare online bronnen te onderscheiden aan de hand van actuele voorbeelden.', 'https://example.com/lesbrief-nepnieuws.pdf'),
-        lp('Samen beslissen in de klas', 'Interactieve les over democratisch besluiten nemen, met een simulatie van een klassenvergadering.', null),
+        lp('Micro:bit — de basis', 'Leerlingen maken kennis met blokprogrammeren via MakeCode en besturen de LED-matrix van hun Micro:bit.', {
+            lesduur_minuten: 60, groepsgrootte: 'Hele klas, in tweetallen',
+            voorbereiding: 'Laad de Micro:bits op en controleer dat MakeCode op de laptops werkt.',
+            benodigdheden: 'Laptops met internet, USB-kabels',
+            lesverloop_intro: 'Wat is een Micro:bit? Toon een paar sprekende voorbeelden.',
+            lesverloop_kern: 'Leerlingen bouwen hun eerste programma: hun naam op de LED-matrix.',
+            lesverloop_afsluiting: 'Resultaten delen en kort reflecteren op wat er lukte.',
+            differentiatie: 'Snelle leerlingen laten reageren op knop A en B.',
+            evaluatie: 'Werkt het programma zoals bedoeld? Korte terugkoppeling per tweetal.',
+            tips: 'Houd een paar reserve-USB-kabels bij de hand.',
+            leerdoelen: ['De leerling herkent de knoppen A en B en het LED-scherm.', 'De leerling maakt een eenvoudig blokprogramma in MakeCode.'],
+        }),
+        lp('Micro:bit — verdieping', 'Leerlingen bouwen voort op de basis met sensoren, variabelen en lussen.', {
+            lesduur_minuten: 75, groepsgrootte: 'Hele klas, in tweetallen',
+            leerdoelen: ['De leerling gebruikt de bewegingssensor.', 'De leerling werkt met variabelen en herhaling.'],
+        }),
+        lp('Mediawijsheid: nepnieuws herkennen', 'Leerlingen leren betrouwbare van onbetrouwbare online bronnen te onderscheiden aan de hand van actuele voorbeelden.', {
+            lesduur_minuten: 45,
+            leerdoelen: ['De leerling beoordeelt de betrouwbaarheid van een online bron.'],
+        }),
+        lp('Samen beslissen in de klas', 'Interactieve les over democratisch besluiten nemen, met een simulatie van een klassenvergadering.', {
+            status: 'concept',
+        }),
     ]
-    const [lpMicrobit, lpMediawijsheid, lpBurgerschap] = lesplannen
+    const [lpMicrobit, lpMicrobitVerdieping, lpMediawijsheid, lpBurgerschap] = lesplannen
 
     const lesplan_doelgroepen = [
-        { lesplan_id: lpMicrobit.id, doelgroep_id: vindDoelgroep('Groep 7').id },
-        { lesplan_id: lpMicrobit.id, doelgroep_id: vindDoelgroep('Groep 8').id },
+        { lesplan_id: lpMicrobit.id, doelgroep_id: vindDoelgroep('Groep 5').id },
+        { lesplan_id: lpMicrobit.id, doelgroep_id: vindDoelgroep('Groep 6').id },
+        { lesplan_id: lpMicrobitVerdieping.id, doelgroep_id: vindDoelgroep('Groep 7').id },
+        { lesplan_id: lpMicrobitVerdieping.id, doelgroep_id: vindDoelgroep('Groep 8').id },
         { lesplan_id: lpMediawijsheid.id, doelgroep_id: vindDoelgroep('VO 1').id },
         { lesplan_id: lpMediawijsheid.id, doelgroep_id: vindDoelgroep('VO 2').id },
         { lesplan_id: lpBurgerschap.id, doelgroep_id: vindDoelgroep('Groep 5').id },
         { lesplan_id: lpBurgerschap.id, doelgroep_id: vindDoelgroep('Groep 6').id },
     ]
     const lesplan_kerndoelen = [
-        { lesplan_id: lpMicrobit.id, kerndoel_id: vindKerndoel('23B', 'po').id },
-        { lesplan_id: lpMicrobit.id, kerndoel_id: vindKerndoel('22A', 'po').id },
-        { lesplan_id: lpMediawijsheid.id, kerndoel_id: vindKerndoel('21B', 'vo').id },
-        { lesplan_id: lpMediawijsheid.id, kerndoel_id: vindKerndoel('23B', 'vo').id },
-        { lesplan_id: lpBurgerschap.id, kerndoel_id: vindKerndoel('BUR-PO-2', 'po').id },
-        { lesplan_id: lpBurgerschap.id, kerndoel_id: vindKerndoel('BUR-PO-3', 'po').id },
+        { lesplan_id: lpMicrobit.id, kerndoel_id: vindKerndoel('23B', 'po').id, diepgang: 'kennismaking' },
+        { lesplan_id: lpMicrobit.id, kerndoel_id: vindKerndoel('22A', 'po').id, diepgang: 'kennismaking' },
+        { lesplan_id: lpMicrobitVerdieping.id, kerndoel_id: vindKerndoel('23B', 'po').id, diepgang: 'verdieping' },
+        { lesplan_id: lpMediawijsheid.id, kerndoel_id: vindKerndoel('21B', 'vo').id, diepgang: 'kennismaking' },
+        { lesplan_id: lpMediawijsheid.id, kerndoel_id: vindKerndoel('23B', 'vo').id, diepgang: 'kennismaking' },
+        { lesplan_id: lpBurgerschap.id, kerndoel_id: vindKerndoel('BUR-PO-2', 'po').id, diepgang: 'kennismaking' },
+        { lesplan_id: lpBurgerschap.id, kerndoel_id: vindKerndoel('BUR-PO-3', 'po').id, diepgang: 'kennismaking' },
     ]
-    const lesplan_labels = [
-        { lesplan_id: lpMicrobit.id, label_id: labelDigitaalId },
-        { lesplan_id: lpMediawijsheid.id, label_id: labelMediawijsheidId },
-        { lesplan_id: lpBurgerschap.id, label_id: labelBurgerschapId },
+    const lesplan_themas = [
+        { lesplan_id: lpMicrobit.id, thema_id: themaId['Programmeren'] },
+        { lesplan_id: lpMicrobit.id, thema_id: themaId['Robotica'] },
+        { lesplan_id: lpMicrobitVerdieping.id, thema_id: themaId['Programmeren'] },
+        { lesplan_id: lpMediawijsheid.id, thema_id: themaId['Mediawijsheid'] },
+        { lesplan_id: lpBurgerschap.id, thema_id: themaId['Digitaal burgerschap'] },
     ]
+    const lesplan_series = [
+        { lesplan_id: lpMicrobit.id, serie_id: serieId['Micro:Bit-lijn'], volgorde: 1 },
+        { lesplan_id: lpMicrobitVerdieping.id, serie_id: serieId['Micro:Bit-lijn'], volgorde: 2 },
+    ]
+    const lesplan_bestanden = [
+        { id: uuid(), lesplan_id: lpMicrobit.id, bestand_url: 'https://example.com/microbit-presentatie.pptx', bestandsnaam: 'microbit-presentatie.pptx', soort: 'presentatie', grootte_bytes: null, aangemaakt_op: new Date().toISOString() },
+        { id: uuid(), lesplan_id: lpMicrobit.id, bestand_url: 'https://example.com/microbit-werkblad.pdf', bestandsnaam: 'werkblad-1.pdf', soort: 'werkblad', grootte_bytes: null, aangemaakt_op: new Date().toISOString() },
+    ]
+    const lesplan_labels = []
     const lesplan_workshops = [
         { lesplan_id: lpMicrobit.id, workshop_template_id: workshopTemplates[0].id },
     ]
     const lesplan_materiaal = [
         { lesplan_id: lpMicrobit.id, materiaal_id: mbItErm.id },
         { lesplan_id: lpMicrobit.id, materiaal_id: mbItNun.id },
+        { lesplan_id: lpMicrobitVerdieping.id, materiaal_id: mbItErm.id },
+        { lesplan_id: lpMicrobitVerdieping.id, materiaal_id: mbItNun.id },
     ]
 
     const newDB = {
@@ -500,9 +559,14 @@ export async function initMockDB() {
         ],
         doelgroepen,
         kerndoelen,
+        themas,
+        lessenseries,
         lesplannen,
         lesplan_doelgroepen,
         lesplan_kerndoelen,
+        lesplan_themas,
+        lesplan_series,
+        lesplan_bestanden,
         lesplan_labels,
         lesplan_workshops,
         lesplan_materiaal,
@@ -819,14 +883,31 @@ export function mockSetLabelsVoorMateriaal(materiaalId, labelIds) {
 
 function enrichLesplan(item, db) {
     const doelgroepIds = (db.lesplan_doelgroepen || []).filter(r => r.lesplan_id === item.id).map(r => r.doelgroep_id)
-    const kerndoelIds = (db.lesplan_kerndoelen || []).filter(r => r.lesplan_id === item.id).map(r => r.kerndoel_id)
+    const kerndoelRows = (db.lesplan_kerndoelen || []).filter(r => r.lesplan_id === item.id)
     const labelIds = (db.lesplan_labels || []).filter(r => r.lesplan_id === item.id).map(r => r.label_id)
+    const themaIds = (db.lesplan_themas || []).filter(r => r.lesplan_id === item.id).map(r => r.thema_id)
+    const serieRows = (db.lesplan_series || []).filter(r => r.lesplan_id === item.id)
     const workshopIds = (db.lesplan_workshops || []).filter(r => r.lesplan_id === item.id).map(r => r.workshop_template_id)
     const materiaalIds = (db.lesplan_materiaal || []).filter(r => r.lesplan_id === item.id).map(r => r.materiaal_id)
     return {
         ...item,
+        leerdoelen: item.leerdoelen || [],
         doelgroepen: (db.doelgroepen || []).filter(d => doelgroepIds.includes(d.id)).sort((a, b) => a.volgorde - b.volgorde),
-        kerndoelen: (db.kerndoelen || []).filter(k => kerndoelIds.includes(k.id)),
+        kerndoelen: kerndoelRows
+            .map(r => {
+                const k = (db.kerndoelen || []).find(k => k.id === r.kerndoel_id)
+                return k ? { ...k, diepgang: r.diepgang || null } : null
+            })
+            .filter(Boolean),
+        themas: (db.themas || []).filter(t => themaIds.includes(t.id)).sort((a, b) => (a.volgorde || 0) - (b.volgorde || 0)),
+        series: serieRows
+            .map(r => {
+                const s = (db.lessenseries || []).find(s => s.id === r.serie_id)
+                return s ? { ...s, volgorde: r.volgorde } : null
+            })
+            .filter(Boolean)
+            .sort((a, b) => (a.volgorde || 0) - (b.volgorde || 0)),
+        bestanden: (db.lesplan_bestanden || []).filter(b => b.lesplan_id === item.id),
         labels: (db.labels || []).filter(l => labelIds.includes(l.id)),
         workshops: (db.workshop_templates || []).filter(w => workshopIds.includes(w.id)).map(w => ({ id: w.id, titel: w.titel })),
         materiaal: (db.materiaal || []).filter(m => materiaalIds.includes(m.id)).map(m => ({ id: m.id, naam: m.naam, type: m.type })),
@@ -878,25 +959,71 @@ export function mockGetAllKerndoelen({ sector, vakgebied } = {}) {
     )
 }
 
+const LESPLAN_VELDEN = [
+    'titel', 'omschrijving', 'status', 'lesduur_minuten', 'groepsgrootte',
+    'voorbereiding', 'benodigdheden', 'lesverloop_intro', 'lesverloop_kern', 'lesverloop_afsluiting',
+    'differentiatie', 'evaluatie', 'tips', 'leerdoelen', 'bestand_url',
+]
+
+function pickLesplanVelden(payload) {
+    const out = {}
+    for (const k of LESPLAN_VELDEN) if (k in payload) out[k] = payload[k]
+    return out
+}
+
 function syncMockKoppeling(db, tabel, lesplanId, kolom, ids) {
     db[tabel] = (db[tabel] || []).filter(r => r.lesplan_id !== lesplanId)
     ;(ids || []).forEach(id => db[tabel].push({ lesplan_id: lesplanId, [kolom]: id }))
 }
 
-function syncAlleMockKoppelingen(db, lesplanId, { doelgroep_ids, kerndoel_ids, label_ids, workshop_template_ids, materiaal_ids }) {
+function syncMockKerndoelen(db, lesplanId, kerndoelen) {
+    db.lesplan_kerndoelen = (db.lesplan_kerndoelen || []).filter(r => r.lesplan_id !== lesplanId)
+    ;(kerndoelen || []).forEach(k => db.lesplan_kerndoelen.push({
+        lesplan_id: lesplanId, kerndoel_id: k.kerndoel_id, diepgang: k.diepgang || null,
+    }))
+}
+
+function syncMockSeries(db, lesplanId, series) {
+    db.lesplan_series = (db.lesplan_series || []).filter(r => r.lesplan_id !== lesplanId)
+    ;(series || []).forEach(s => db.lesplan_series.push({
+        lesplan_id: lesplanId, serie_id: s.serie_id, volgorde: s.volgorde ?? null,
+    }))
+}
+
+function syncMockBestanden(db, lesplanId, bestanden) {
+    db.lesplan_bestanden = (db.lesplan_bestanden || []).filter(r => r.lesplan_id !== lesplanId)
+    ;(bestanden || []).forEach(b => db.lesplan_bestanden.push({
+        id: b.id || uuid(), lesplan_id: lesplanId,
+        bestand_url: b.bestand_url, bestandsnaam: b.bestandsnaam || null,
+        soort: b.soort || 'overig', grootte_bytes: b.grootte_bytes ?? null,
+        aangemaakt_op: b.aangemaakt_op || new Date().toISOString(),
+    }))
+}
+
+function syncAlleMockKoppelingen(db, lesplanId, payload) {
+    const { doelgroep_ids, kerndoelen, thema_ids, label_ids, workshop_template_ids, materiaal_ids, series, bestanden } = payload
     syncMockKoppeling(db, 'lesplan_doelgroepen', lesplanId, 'doelgroep_id', doelgroep_ids)
-    syncMockKoppeling(db, 'lesplan_kerndoelen', lesplanId, 'kerndoel_id', kerndoel_ids)
+    syncMockKoppeling(db, 'lesplan_themas', lesplanId, 'thema_id', thema_ids)
     syncMockKoppeling(db, 'lesplan_labels', lesplanId, 'label_id', label_ids)
     syncMockKoppeling(db, 'lesplan_workshops', lesplanId, 'workshop_template_id', workshop_template_ids)
     syncMockKoppeling(db, 'lesplan_materiaal', lesplanId, 'materiaal_id', materiaal_ids)
+    syncMockKerndoelen(db, lesplanId, kerndoelen)
+    syncMockSeries(db, lesplanId, series)
+    if (bestanden !== undefined) syncMockBestanden(db, lesplanId, bestanden)
 }
 
 export function mockAddLesplan(payload) {
     const db = getDB()
-    const { titel, omschrijving, bestand_url, aangemaakt_door } = payload
+    const velden = pickLesplanVelden(payload)
     const nieuw = {
-        id: uuid(), titel, omschrijving: omschrijving || null, bestand_url: bestand_url || null,
-        aangemaakt_door, aangemaakt_op: new Date().toISOString(), laatst_bijgewerkt_op: new Date().toISOString(),
+        id: uuid(),
+        status: 'concept',
+        ...velden,
+        omschrijving: velden.omschrijving || null,
+        leerdoelen: velden.leerdoelen || [],
+        aangemaakt_door: payload.aangemaakt_door,
+        aangemaakt_op: new Date().toISOString(),
+        laatst_bijgewerkt_op: new Date().toISOString(),
     }
     if (!db.lesplannen) db.lesplannen = []
     db.lesplannen.push(nieuw)
@@ -909,10 +1036,9 @@ export function mockUpdateLesplan(id, payload) {
     const db = getDB()
     const idx = (db.lesplannen || []).findIndex(l => l.id === id)
     if (idx === -1) throw new Error('Lesplan niet gevonden')
-    const { titel, omschrijving, bestand_url } = payload
     db.lesplannen[idx] = {
         ...db.lesplannen[idx],
-        titel, omschrijving: omschrijving || null, bestand_url: bestand_url || null,
+        ...pickLesplanVelden(payload),
         laatst_bijgewerkt_op: new Date().toISOString(),
     }
     syncAlleMockKoppelingen(db, id, payload)
@@ -925,9 +1051,72 @@ export function mockVerwijderLesplan(id) {
     db.lesplannen = (db.lesplannen || []).filter(l => l.id !== id)
     db.lesplan_doelgroepen = (db.lesplan_doelgroepen || []).filter(r => r.lesplan_id !== id)
     db.lesplan_kerndoelen = (db.lesplan_kerndoelen || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_themas = (db.lesplan_themas || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_series = (db.lesplan_series || []).filter(r => r.lesplan_id !== id)
+    db.lesplan_bestanden = (db.lesplan_bestanden || []).filter(r => r.lesplan_id !== id)
     db.lesplan_labels = (db.lesplan_labels || []).filter(r => r.lesplan_id !== id)
     db.lesplan_workshops = (db.lesplan_workshops || []).filter(r => r.lesplan_id !== id)
     db.lesplan_materiaal = (db.lesplan_materiaal || []).filter(r => r.lesplan_id !== id)
+    saveDB(db)
+}
+
+// ── Thema's mock functies ────────────────────────────────────────
+export function mockGetAllThemas() {
+    const db = getDB()
+    return [...(db.themas || [])].sort((a, b) => (a.volgorde || 0) - (b.volgorde || 0) || a.naam.localeCompare(b.naam))
+}
+
+export function mockAddThema({ naam, kleur, volgorde }) {
+    const db = getDB()
+    const nieuw = { id: uuid(), naam, kleur: kleur || null, volgorde: volgorde ?? ((db.themas || []).length + 1), aangemaakt_op: new Date().toISOString() }
+    db.themas = [...(db.themas || []), nieuw]
+    saveDB(db)
+    return nieuw
+}
+
+export function mockUpdateThema(id, patch) {
+    const db = getDB()
+    const idx = (db.themas || []).findIndex(t => t.id === id)
+    if (idx === -1) throw new Error('Thema niet gevonden')
+    db.themas[idx] = { ...db.themas[idx], ...patch }
+    saveDB(db)
+    return db.themas[idx]
+}
+
+export function mockDeleteThema(id) {
+    const db = getDB()
+    db.themas = (db.themas || []).filter(t => t.id !== id)
+    db.lesplan_themas = (db.lesplan_themas || []).filter(r => r.thema_id !== id)
+    saveDB(db)
+}
+
+// ── Lessenseries mock functies ───────────────────────────────────
+export function mockGetAllSeries() {
+    const db = getDB()
+    return [...(db.lessenseries || [])].sort((a, b) => a.naam.localeCompare(b.naam))
+}
+
+export function mockAddSerie({ naam, omschrijving }) {
+    const db = getDB()
+    const nieuw = { id: uuid(), naam, omschrijving: omschrijving || null, aangemaakt_op: new Date().toISOString() }
+    db.lessenseries = [...(db.lessenseries || []), nieuw]
+    saveDB(db)
+    return nieuw
+}
+
+export function mockUpdateSerie(id, patch) {
+    const db = getDB()
+    const idx = (db.lessenseries || []).findIndex(s => s.id === id)
+    if (idx === -1) throw new Error('Serie niet gevonden')
+    db.lessenseries[idx] = { ...db.lessenseries[idx], ...patch }
+    saveDB(db)
+    return db.lessenseries[idx]
+}
+
+export function mockDeleteSerie(id) {
+    const db = getDB()
+    db.lessenseries = (db.lessenseries || []).filter(s => s.id !== id)
+    db.lesplan_series = (db.lesplan_series || []).filter(r => r.serie_id !== id)
     saveDB(db)
 }
 
