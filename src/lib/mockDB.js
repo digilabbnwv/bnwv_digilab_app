@@ -62,7 +62,7 @@ export function mockPreviewCode(categoriePrefix) {
 }
 
 // ── Versie voor automatische migratie ──────────────────────────
-const DB_VERSION = 12
+const DB_VERSION = 14
 
 export async function initMockDB() {
     const bestaand = getDB()
@@ -433,6 +433,117 @@ export async function initMockDB() {
         { lesplan_id: lpMicrobitVerdieping.id, materiaal_id: mbItNun.id },
     ]
 
+    // ── Rapportage-demodata: historische transacties + afgeronde reserveringen ──
+    // Zorgt dat de rapportagegrafieken in testmodus gevuld zijn (spreiding over
+    // categorieën, locaties, medewerkers en de afgelopen ~5 weken).
+    const _dag = 24 * 60 * 60 * 1000
+    const _uur = 60 * 60 * 1000
+    const _tIso = (ms) => new Date(Date.now() - ms).toISOString()
+    const _dIso = (ms) => _tIso(ms).slice(0, 10)
+
+    const _histTransacties = []
+    const _histReserveringen = []
+
+    // Afgeronde (teruggebracht) reserveringen mét gekoppelde uitcheck → doorlooptijd
+    const _gekoppeld = [
+        { item: spheroIndiErm, med: med2Id, d: 4 },
+        { item: classvrErm, med: med1Id, d: 9 },
+        { item: ozobotEvo, med: med2Id, d: 12 },
+        { item: mbItNun, med: med1Id, d: 18 },
+        { item: beebot1, med: med2Id, d: 23 },
+        { item: legoSpike, med: med1Id, d: 28 },
+        { item: photon, med: med2Id, d: 33 },
+    ]
+    for (const { item, med, d } of _gekoppeld) {
+        const resId = uuid()
+        const uren = 2 + (d % 6)
+        _histReserveringen.push({
+            id: resId, materiaal_id: item.id, medewerker_id: med,
+            van_datum: _dIso(d * _dag), tot_datum: _dIso((d - 2) * _dag),
+            toelichting: 'Afgeronde uitleen', status: 'teruggebracht',
+            aangemaakt_op: _tIso((d + 1) * _dag),
+        })
+        _histTransacties.push({
+            id: uuid(), materiaal_id: item.id, medewerker_id: med,
+            type: 'uitchecken', locatie: null,
+            tijdstip: _tIso((d + 1) * _dag - uren * _uur), notitie: null, reservering_id: resId,
+        })
+        _histTransacties.push({
+            id: uuid(), materiaal_id: item.id, medewerker_id: med,
+            type: 'inchecken', locatie: item.standaard_locatie,
+            tijdstip: _tIso((d - 1) * _dag), notitie: null,
+        })
+    }
+
+    // Losse (ad-hoc) uitchecks zonder reservering — extra gebruiksvolume
+    const _adhoc = [
+        { item: spheroBolt, med: med1Id, d: 1 },
+        { item: spheroIndiNun, med: med2Id, d: 6 },
+        { item: spheroIndiErm, med: med1Id, d: 14 },
+        { item: mbItErm, med: med2Id, d: 20 },
+        { item: ozobotEvo, med: med1Id, d: 26 },
+        { item: classvrErm, med: med2Id, d: 30 },
+    ]
+    for (const { item, med, d } of _adhoc) {
+        _histTransacties.push({
+            id: uuid(), materiaal_id: item.id, medewerker_id: med,
+            type: 'uitchecken', locatie: null, tijdstip: _tIso(d * _dag), notitie: null,
+        })
+    }
+
+    // Geannuleerde reserveringen
+    const _geannuleerd = [
+        { item: dpriErm, med: med2Id, d: 10 },
+        { item: laserNun, med: med1Id, d: 21 },
+    ]
+    for (const { item, med, d } of _geannuleerd) {
+        _histReserveringen.push({
+            id: uuid(), materiaal_id: item.id, medewerker_id: med,
+            van_datum: _dIso((d - 3) * _dag), tot_datum: _dIso((d - 5) * _dag),
+            toelichting: 'Geannuleerd', status: 'geannuleerd', aangemaakt_op: _tIso(d * _dag),
+        })
+    }
+
+    // Opgeloste onderhoudsmeldingen (naast de 2 open hieronder) → oplostijd + type-verdeling
+    const _histMeldingen = [
+        { item: spheroBolt, type: 'kapot', gemeld: 35, opgelost: 33 },
+        { item: ozobotEvo, type: 'mist', gemeld: 28, opgelost: 20 },
+        { item: classvrNun, type: 'verbruiksmateriaal', gemeld: 22, opgelost: 21 },
+        { item: mbItNun, type: 'kapot', gemeld: 12, opgelost: 8 },
+        { item: legoSpike, type: 'mist', gemeld: 6, opgelost: 5 },
+    ].map(({ item, type, gemeld, opgelost }) => ({
+        id: uuid(), materiaal_id: item.id, gemeld_door: med2Id, type_melding: type,
+        toelichting: 'Afgehandeld', foto_url: null, status: 'opgelost', opgelost_door: med1Id,
+        tijdstip_gemeld: _tIso(gemeld * _dag), tijdstip_opgelost: _tIso(opgelost * _dag),
+    }))
+
+    // Logins per medewerker (afgelopen ~30 dagen)
+    const _histLogins = []
+    for (const { med, dagen } of [
+        { med: med1Id, dagen: [1, 2, 3, 5, 8, 10, 14, 18, 22, 29] },
+        { med: med2Id, dagen: [2, 6, 11, 20, 27] },
+    ]) {
+        for (const d of dagen) _histLogins.push({ id: uuid(), medewerker_id: med, tijdstip: _tIso(d * _dag) })
+    }
+
+    // Geplande workshops rond nu (naast de vaste voorbeelden in maart/april)
+    const _dOffset = (dagen) => new Date(Date.now() + dagen * _dag).toISOString().slice(0, 10)
+    const _histWorkshops = [
+        { tpl: 0, off: -3, loc: 'Ermelo', dg: '8-12 jr', status: 'gepubliceerd', max: 12, mat: [mbItErm.id] },
+        { tpl: 3, off: 4, loc: 'Nunspeet', dg: '8-12 jr', status: 'gepubliceerd', max: 10, mat: [ozobotEvo.id] },
+        { tpl: 8, off: 9, loc: 'Ermelo', dg: '8-12 jr', status: 'gepubliceerd', max: 16, mat: [classvrErm.id] },
+        { tpl: 5, off: 16, loc: 'Nunspeet', dg: '12+', status: 'concept', max: 6, mat: [dpriNun.id] },
+        { tpl: 15, off: 25, loc: 'Ermelo', dg: 'Volwassenen', status: 'concept', max: 15, mat: [] },
+        { tpl: 4, off: 11, loc: 'Ermelo', dg: '4-8 jr', status: 'geannuleerd', max: 12, mat: [beebot1.id] },
+    ].map(({ tpl, off, loc, dg, status, max, mat }) => ({
+        id: uuid(), template_id: workshopTemplates[tpl].id, titel: workshopTemplates[tpl].titel,
+        datum: _dOffset(off), start_tijd: '15:30', eind_tijd: '16:30',
+        locatie: loc, doelgroep: dg, max_deelnemers: max, kosten: null, status, uitvoerder_id: null,
+        materiaal_ids: mat, ruimte_geregeld: status === 'gepubliceerd', in_jaarkalender: status === 'gepubliceerd',
+        in_webshop: false, webshop_product_url: null, opmerkingen: null,
+        planning_batch_id: null, aangemaakt_door: med1Id, aangemaakt_op: _tIso((off < 0 ? -off : 1) * _dag),
+    }))
+
     const newDB = {
         version: DB_VERSION,
         medewerkers: [
@@ -453,18 +564,15 @@ export async function initMockDB() {
             ...theaterlezenItems.map(m => ({ materiaal_id: m.id, label_id: labelLeesbevorderingId })),
         ],
         transacties: [
+            ..._histTransacties,
             {
                 id: uuid(), materiaal_id: spheroIndiErm.id, medewerker_id: med2Id,
                 type: 'inchecken', locatie: 'Ermelo',
                 tijdstip: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), notitie: null,
             },
-            {
-                id: uuid(), materiaal_id: spheroBolt.id, medewerker_id: med1Id,
-                type: 'uitchecken', locatie: null,
-                tijdstip: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), notitie: null,
-            },
         ],
         onderhoudsmeldingen: [
+            ..._histMeldingen,
             {
                 id: uuid(), materiaal_id: classvrErm.id, gemeld_door: med1Id,
                 type_melding: 'kapot',
@@ -483,6 +591,7 @@ export async function initMockDB() {
             },
         ],
         reserveringen: [
+            ..._histReserveringen,
             {
                 id: uuid(), materiaal_id: spheroIndiErm.id, medewerker_id: med2Id,
                 van_datum: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
@@ -498,9 +607,10 @@ export async function initMockDB() {
                 status: 'actief', aangemaakt_op: new Date().toISOString(),
             },
         ],
-        logins: [],
+        logins: _histLogins,
         workshop_templates: workshopTemplates,
         geplande_workshops: [
+            ..._histWorkshops,
             {
                 id: uuid(), template_id: workshopTemplates[0].id,
                 titel: workshopTemplates[0].titel, // Micro:Bit – Aan de slag
@@ -825,6 +935,65 @@ export function mockGetTransacties(materiaalId) {
             return { ...t, medewerker: med ? { naam: med.naam } : null }
         })
         .sort((a, b) => new Date(b.tijdstip) - new Date(a.tijdstip))
+}
+
+// ── Rapportage mock functies ─────────────────────────────────────
+
+export function mockGetTransactiesInPeriode(van, tot) {
+    const db = getDB()
+    const totGrens = `${tot}T23:59:59.999Z`
+    return (db.transacties || [])
+        .filter(t => t.tijdstip >= van && t.tijdstip <= totGrens)
+        .map(t => {
+            const mat = db.materiaal.find(m => m.id === t.materiaal_id)
+            return {
+                ...t,
+                materiaal: mat
+                    ? { id: mat.id, naam: mat.naam, type: mat.type, categorie_prefix: mat.categorie_prefix, standaard_locatie: mat.standaard_locatie }
+                    : null,
+            }
+        })
+        .sort((a, b) => new Date(b.tijdstip) - new Date(a.tijdstip))
+}
+
+export function mockGetLaatsteGebruikPerItem() {
+    const db = getDB()
+    const map = new Map()
+    ;(db.transacties || [])
+        .filter(t => t.type === 'uitchecken')
+        .sort((a, b) => new Date(b.tijdstip) - new Date(a.tijdstip))
+        .forEach(t => {
+            if (!map.has(t.materiaal_id)) map.set(t.materiaal_id, t.tijdstip)
+        })
+    return map
+}
+
+export function mockGetReserveringenInPeriode(van, tot) {
+    const db = getDB()
+    const totGrens = `${tot}T23:59:59.999Z`
+    return (db.reserveringen || [])
+        .filter(r => r.aangemaakt_op >= van && r.aangemaakt_op <= totGrens)
+        .map(r => {
+            const mat = db.materiaal.find(m => m.id === r.materiaal_id)
+            const med = db.medewerkers.find(m => m.id === r.medewerker_id)
+            return {
+                ...r,
+                materiaal: mat ? { id: mat.id, naam: mat.naam, type: mat.type } : null,
+                medewerker: med ? { id: med.id, naam: med.naam } : null,
+            }
+        })
+        .sort((a, b) => new Date(b.aangemaakt_op) - new Date(a.aangemaakt_op))
+}
+
+export function mockGetMedewerkers() {
+    const db = getDB()
+    return (db.medewerkers || []).map(m => ({ id: m.id, naam: m.naam }))
+}
+
+export function mockGetLoginsInPeriode(van, tot) {
+    const db = getDB()
+    const totGrens = `${tot}T23:59:59.999Z`
+    return (db.logins || []).filter(l => l.tijdstip >= van && l.tijdstip <= totGrens)
 }
 
 // ── Labels mock functies ─────────────────────────────────────────

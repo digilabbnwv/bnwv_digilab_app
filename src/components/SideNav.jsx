@@ -1,10 +1,11 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Package, CalendarCheck, BookOpen, GraduationCap, Network } from 'lucide-react'
+import { LayoutDashboard, Package, CalendarCheck, BookOpen, GraduationCap, Network, BarChart3 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
-const navItems = [
+const baseNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Home' },
     { to: '/materiaal', icon: Package, label: 'Materiaal' },
     { to: '/reserveren', icon: CalendarCheck, label: 'Reserveren' },
@@ -14,6 +15,10 @@ const navItems = [
 ]
 
 export default function SideNav() {
+    const { isBeheerder } = useAuth()
+    const navItems = isBeheerder
+        ? [...baseNavItems, { to: '/rapportage', icon: BarChart3, label: 'Rapportage' }]
+        : baseNavItems
     return (
         <aside className="no-print hidden lg:flex lg:flex-col lg:w-60 lg:shrink-0 lg:sticky lg:top-0 lg:h-dvh z-40 bg-bg-surface/95 backdrop-blur-xl border-r border-overlay/10">
             <div className={`flex flex-col gap-1 p-4 ${MOCK ? 'pt-8' : ''}`}>

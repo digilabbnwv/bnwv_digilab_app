@@ -26,6 +26,13 @@ import Kalender from './pages/Kalender'
 import WorkshopInplannen from './pages/WorkshopInplannen'
 import GeplandeWorkshopDetail from './pages/GeplandeWorkshopDetail'
 import PlanningGenereren from './pages/PlanningGenereren'
+import Rapportage from './pages/Rapportage'
+import RapportageMateriaal from './pages/RapportageMateriaal'
+import RapportageReserveringen from './pages/RapportageReserveringen'
+import RapportageOnderhoud from './pages/RapportageOnderhoud'
+import RapportageWorkshops from './pages/RapportageWorkshops'
+import RapportageLesbrieven from './pages/RapportageLesbrieven'
+import RapportageGebruikers from './pages/RapportageGebruikers'
 import BottomNav from './components/BottomNav'
 import SideNav from './components/SideNav'
 import AppHeader from './components/AppHeader'
@@ -133,6 +140,15 @@ export default function App() {
 
         {/* Leerlijn */}
         <Route path="/leerlijn" element={<ProtectedRoute><PageLayout><Leerlijn /></PageLayout></ProtectedRoute>} />
+
+        {/* Rapportage (beheerder) */}
+        <Route path="/rapportage" element={<BeheerderRoute><PageLayout><Rapportage /></PageLayout></BeheerderRoute>} />
+        <Route path="/rapportage/materiaal" element={<BeheerderRoute><PageLayout><RapportageMateriaal /></PageLayout></BeheerderRoute>} />
+        <Route path="/rapportage/reserveringen" element={<BeheerderRoute><PageLayout><RapportageReserveringen /></PageLayout></BeheerderRoute>} />
+        <Route path="/rapportage/onderhoud" element={<BeheerderRoute><PageLayout><RapportageOnderhoud /></PageLayout></BeheerderRoute>} />
+        <Route path="/rapportage/workshops" element={<BeheerderRoute><PageLayout><RapportageWorkshops /></PageLayout></BeheerderRoute>} />
+        <Route path="/rapportage/lesbrieven" element={<BeheerderRoute><PageLayout><RapportageLesbrieven /></PageLayout></BeheerderRoute>} />
+        <Route path="/rapportage/gebruikers" element={<BeheerderRoute><PageLayout><RapportageGebruikers /></PageLayout></BeheerderRoute>} />
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />

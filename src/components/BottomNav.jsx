@@ -1,8 +1,9 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Package, CalendarCheck, BookOpen, GraduationCap } from 'lucide-react'
+import { LayoutDashboard, Package, CalendarCheck, BookOpen, GraduationCap, BarChart3 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
-const navItems = [
+const baseNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Home' },
     { to: '/materiaal', icon: Package, label: 'Materiaal' },
     { to: '/reserveren', icon: CalendarCheck, label: 'Reserveren' },
@@ -11,6 +12,10 @@ const navItems = [
 ]
 
 export default function BottomNav() {
+    const { isBeheerder } = useAuth()
+    const navItems = isBeheerder
+        ? [...baseNavItems, { to: '/rapportage', icon: BarChart3, label: 'Rapportage' }]
+        : baseNavItems
     return (
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-bg-surface/95 backdrop-blur-xl border-t border-overlay/10 safe-area-inset-bottom">
             <div className="flex items-center justify-around px-1 py-2 max-w-3xl mx-auto">
