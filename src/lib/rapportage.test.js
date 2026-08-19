@@ -3,6 +3,7 @@ import {
     telGebruikPerItem, telGebruikPerCategorie, telGebruikPerLocatie,
     telPerStatus, telPerMedewerker, trendPerPeriode, gemDoorlooptijd, bepaalOngebruikt,
     telMeldingenPerType, telMeldingenPerStatus, telMeldingenPerMateriaal, gemOplostijd,
+    gemMeldingDoorlooptijd, meldingenAchterstand,
     telWorkshopsPerStatus, telWorkshopsPer,
     telLesplannenPerStatus, telLesplannenPerThema, telLesplannenPerDoelgroep, berekenDekkingsgraad,
     activiteitPerMedewerker,
@@ -167,24 +168,46 @@ describe('rapportage.js aggregatiefuncties', () => {
 
     describe('onderhoud-aggregaties', () => {
         const meldingen = [
-            { materiaal_id: 'a', type_melding: 'kapot', status: 'opgelost', materiaal: { naam: 'Sphero' }, tijdstip_gemeld: '2026-08-01T10:00:00Z', tijdstip_opgelost: '2026-08-03T10:00:00Z' }, // 48u
-            { materiaal_id: 'a', type_melding: 'mist', status: 'open', materiaal: { naam: 'Sphero' } },
-            { materiaal_id: 'b', type_melding: 'kapot', status: 'opgelost', materiaal: { naam: 'Ozobot' }, tijdstip_gemeld: '2026-08-01T10:00:00Z', tijdstip_opgelost: '2026-08-01T22:00:00Z' }, // 12u
+            // gemeld → in behandeling (24u) → afgerond (totaal 48u)
+            { materiaal_id: 'a', type_melding: 'kapot', status: 'afgerond', materiaal: { naam: 'Sphero' }, tijdstip_gemeld: '2026-08-01T10:00:00Z', tijdstip_in_behandeling: '2026-08-02T10:00:00Z', tijdstip_opgelost: '2026-08-03T10:00:00Z' },
+            { materiaal_id: 'a', type_melding: 'mist', status: 'nieuw', materiaal: { naam: 'Sphero' } },
+            // gemeld → in behandeling (4u) → afgerond (totaal 12u)
+            { materiaal_id: 'b', type_melding: 'kapot', status: 'afgerond', materiaal: { naam: 'Ozobot' }, tijdstip_gemeld: '2026-08-01T10:00:00Z', tijdstip_in_behandeling: '2026-08-01T14:00:00Z', tijdstip_opgelost: '2026-08-01T22:00:00Z' },
+            { materiaal_id: 'c', type_melding: 'anders', status: 'in_behandeling', materiaal: { naam: 'Beebot' } },
         ]
         it('telt per type', () => {
             expect(telMeldingenPerType(meldingen)).toEqual([
                 { type: 'kapot', label: 'Kapot', aantal: 2 },
                 { type: 'mist', label: 'Mist onderdeel', aantal: 1 },
+                { type: 'anders', label: 'Anders', aantal: 1 },
             ])
         })
-        it('telt per status', () => {
-            expect(telMeldingenPerStatus(meldingen)).toEqual({ open: 1, opgelost: 2 })
+        it('telt per status (drie fasen)', () => {
+            expect(telMeldingenPerStatus(meldingen)).toEqual({ nieuw: 1, in_behandeling: 1, afgerond: 2 })
         })
         it('telt per materiaal (probleemmateriaal)', () => {
             expect(telMeldingenPerMateriaal(meldingen)[0]).toEqual({ id: 'a', naam: 'Sphero', aantal: 2 })
         })
-        it('middelt oplostijd van opgeloste meldingen in uren', () => {
+        it('middelt totale oplostijd van afgeronde meldingen in uren', () => {
             expect(gemOplostijd(meldingen)).toBe(30) // (48 + 12) / 2
+        })
+        it('middelt doorlooptijd per fase', () => {
+            expect(gemMeldingDoorlooptijd(meldingen)).toEqual({
+                naarInBehandeling: 14, // (24 + 4) / 2
+                naarAfgerond: 16,      // (24 + 8) / 2
+            })
+        })
+        it('signaleert meldingen die te lang open staan', () => {
+            const nu = new Date('2026-08-20T10:00:00Z').getTime()
+            const rijen = [
+                { id: 'x', status: 'nieuw', tijdstip_gemeld: '2026-08-01T10:00:00Z', materiaal: { naam: 'Sphero' } }, // 19d nieuw
+                { id: 'y', status: 'nieuw', tijdstip_gemeld: '2026-08-19T10:00:00Z', materiaal: { naam: 'Ozobot' } }, // 1d — binnen norm
+                { id: 'z', status: 'in_behandeling', tijdstip_gemeld: '2026-08-01T10:00:00Z', tijdstip_in_behandeling: '2026-08-02T10:00:00Z', materiaal: { naam: 'Beebot' } }, // 18d in behandeling
+                { id: 'w', status: 'afgerond', tijdstip_gemeld: '2026-07-01T10:00:00Z', materiaal: { naam: 'Lego' } }, // afgerond telt niet
+            ]
+            const res = meldingenAchterstand(rijen, { nieuw: 3, in_behandeling: 7 }, nu)
+            expect(res.map(r => r.id)).toEqual(['x', 'z']) // aflopend op dagen
+            expect(res[0]).toMatchObject({ id: 'x', status: 'nieuw', materiaal: 'Sphero', dagen: 19 })
         })
     })
 

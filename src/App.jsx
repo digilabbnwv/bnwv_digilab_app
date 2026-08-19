@@ -12,6 +12,7 @@ import MateriaalBewerken from './pages/MateriaalBewerken'
 import MateriaalKaartPrint from './pages/MateriaalKaartPrint'
 import LabelsBeheer from './pages/LabelsBeheer'
 import MeldingenOverzicht from './pages/MeldingenOverzicht'
+import MeldingDetail from './pages/MeldingDetail'
 import OnderhoudMelden from './pages/OnderhoudMelden'
 import ReserverenPagina from './pages/ReserverenPagina'
 import ProfielPagina from './pages/ProfielPagina'
@@ -119,6 +120,7 @@ export default function App() {
         <Route path="/melding" element={<ProtectedRoute><PageLayout><MeldingenOverzicht /></PageLayout></ProtectedRoute>} />
         <Route path="/melding/nieuw" element={<ProtectedRoute><PageLayout><OnderhoudMelden /></PageLayout></ProtectedRoute>} />
         <Route path="/melding/nieuw/:materiaalId" element={<ProtectedRoute><PageLayout><OnderhoudMelden /></PageLayout></ProtectedRoute>} />
+        <Route path="/melding/:id" element={<ProtectedRoute><PageLayout><MeldingDetail /></PageLayout></ProtectedRoute>} />
 
         {/* Workshops — planning kalender + beheer */}
         <Route path="/workshops" element={<ProtectedRoute><PageLayout><Kalender /></PageLayout></ProtectedRoute>} />

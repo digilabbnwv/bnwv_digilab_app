@@ -1,17 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAllMeldingen, sluitMelding } from '../lib/onderhoud'
-import { useAuth } from '../context/AuthContext'
+import { getAllMeldingen } from '../lib/onderhoud'
 import { LaadIndicator, DatumTijd } from '../components/UI'
-import Modal from '../components/Modal'
-import PincodeInvoer from '../components/PincodeInvoer'
-import { verifyPin } from '../lib/auth'
-import { useToast } from '../context/ToastContext'
-import { foutTekst } from '../lib/foutmelding'
-import {
-    Wrench, Plus, AlertTriangle, CheckCircle2, Package,
-    ChevronRight, Clock, User
-} from 'lucide-react'
+import { MeldingStatusBadge } from '../components/MeldingStatus'
+import { Wrench, Plus, ChevronRight, Clock, User } from 'lucide-react'
 
 const TYPE_LABELS = {
     kapot: { label: 'Kapot', icon: '🔧', kleur: 'text-error' },
@@ -20,91 +12,73 @@ const TYPE_LABELS = {
     anders: { label: 'Anders', icon: '💬', kleur: 'text-text-muted' },
 }
 
+// Randkleur per status voor de kaart
+const RAND = {
+    nieuw: 'border-l-error',
+    in_behandeling: 'border-l-amber-400',
+    afgerond: 'border-l-success/40',
+}
+
 export default function MeldingenOverzicht() {
-    const { medewerker } = useAuth()
-    const toast = useToast()
     const [meldingen, setMeldingen] = useState([])
-    const [gefilterd, setGefilterd] = useState([])
     const [loading, setLoading] = useState(true)
-    const [toonAfgerond, setToonAfgerond] = useState(false)
-
-    // Sluiten-flow
-    const [sluitenMelding, setSluitenMelding] = useState(null)
-    const [pinLoading, setPinLoading] = useState(false)
-    const [pinFout, setPinFout] = useState('')
-
-    const laad = async () => {
-        setLoading(true)
-        try {
-            const data = await getAllMeldingen()
-            setMeldingen(data)
-        } catch (err) {
-            console.error(err)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    useEffect(() => { laad() }, [])
+    const [filter, setFilter] = useState('openstaand')
 
     useEffect(() => {
-        if (toonAfgerond) {
-            setGefilterd(meldingen)
-        } else {
-            setGefilterd(meldingen.filter(m => m.status === 'open'))
-        }
-    }, [toonAfgerond, meldingen])
+        let actief = true
+        getAllMeldingen()
+            .then(d => { if (actief) setMeldingen(d) })
+            .catch(console.error)
+            .finally(() => { if (actief) setLoading(false) })
+        return () => { actief = false }
+    }, [])
 
-    const aantalOpen = meldingen.filter(m => m.status === 'open').length
-    const aantalOpgelost = meldingen.filter(m => m.status === 'opgelost').length
+    const tellingen = useMemo(() => ({
+        openstaand: meldingen.filter(m => m.status !== 'afgerond').length,
+        nieuw: meldingen.filter(m => m.status === 'nieuw').length,
+        in_behandeling: meldingen.filter(m => m.status === 'in_behandeling').length,
+        afgerond: meldingen.filter(m => m.status === 'afgerond').length,
+    }), [meldingen])
 
-    const handleSluitPin = async (pin) => {
-        setPinLoading(true)
-        setPinFout('')
-        try {
-            await verifyPin(medewerker.id, pin)
-            await sluitMelding(sluitenMelding.id, medewerker.id)
-            setSluitenMelding(null)
-            toast.succes('Melding afgerond')
-            await laad()
-        } catch (err) {
-            setPinFout(foutTekst(err, 'Onjuiste pincode'))
-        } finally {
-            setPinLoading(false)
-        }
-    }
+    const gefilterd = useMemo(() => {
+        if (filter === 'openstaand') return meldingen.filter(m => m.status !== 'afgerond')
+        return meldingen.filter(m => m.status === filter)
+    }, [meldingen, filter])
+
+    const chips = [
+        { key: 'openstaand', label: 'Openstaand', aantal: tellingen.openstaand },
+        { key: 'nieuw', label: 'Nieuw', aantal: tellingen.nieuw },
+        { key: 'in_behandeling', label: 'In behandeling', aantal: tellingen.in_behandeling },
+        { key: 'afgerond', label: 'Afgerond', aantal: tellingen.afgerond },
+    ]
 
     return (
         <div className="app-container pt-8 pb-4 animate-fadeIn">
-
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary">Meldingen</h1>
-                    <p className="text-text-muted text-sm mt-0.5">
-                        {toonAfgerond ? `${aantalOpen} open · ${aantalOpgelost} afgerond` : `${aantalOpen} openstaand`}
-                    </p>
+                    <p className="text-text-muted text-sm mt-0.5">{tellingen.openstaand} openstaand</p>
                 </div>
-                <Link
-                    to="/melding/nieuw"
-                    className="btn-accent py-2 px-4 text-sm flex items-center gap-2"
-                >
+                <Link to="/melding/nieuw" className="btn-accent py-2 px-4 text-sm flex items-center gap-2">
                     <Plus size={16} /> Nieuwe melding
                 </Link>
             </div>
 
-            {/* Toggle afgeronde meldingen */}
-            <div className="flex items-center gap-2 mb-5">
-                <button
-                    onClick={() => setToonAfgerond(!toonAfgerond)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${toonAfgerond
-                            ? 'bg-success text-white shadow-lg shadow-success/30'
+            {/* Statusfilters */}
+            <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1">
+                {chips.map(c => (
+                    <button
+                        key={c.key}
+                        onClick={() => setFilter(c.key)}
+                        className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === c.key
+                            ? 'bg-accent text-white shadow-lg shadow-accent/30'
                             : 'bg-bg-surface border border-overlay/10 text-text-muted hover:text-text-secondary'
-                        }`}
-                >
-                    <CheckCircle2 size={13} />
-                    {toonAfgerond ? 'Afgeronde verbergen' : `Toon afgeronde (${aantalOpgelost})`}
-                </button>
+                            }`}
+                    >
+                        {c.label} ({c.aantal})
+                    </button>
+                ))}
             </div>
 
             {/* Lijst */}
@@ -114,72 +88,48 @@ export default function MeldingenOverzicht() {
                 <div className="card p-10 text-center">
                     <Wrench size={32} className="mx-auto mb-3 text-text-muted opacity-30" />
                     <p className="text-text-muted text-sm">
-                        {!toonAfgerond ? 'Geen openstaande meldingen 🎉' : 'Geen meldingen gevonden'}
+                        {filter === 'openstaand' ? 'Geen openstaande meldingen 🎉' : 'Geen meldingen in deze categorie'}
                     </p>
                 </div>
             ) : (
                 <div className="space-y-2">
                     {gefilterd.map(m => {
                         const typeInfo = TYPE_LABELS[m.type_melding] || { label: m.type_melding, icon: '❓', kleur: 'text-text-muted' }
-                        const isOpen = m.status === 'open'
-
                         return (
-                            <div key={m.id} className={`card overflow-hidden ${isOpen ? 'border-l-2 border-l-error' : 'border-l-2 border-l-success/40'}`}>
-                                {/* Klikbaar deel → naar item */}
-                                <Link
-                                    to={`/item/${m.materiaal?.qr_code || '#'}`}
-                                    className="flex items-start gap-3 p-4 hover:bg-bg-hover transition-colors"
-                                >
-                                    {/* Type icoon */}
-                                    <div className="w-9 h-9 rounded-lg bg-bg-app flex items-center justify-center flex-shrink-0 text-base mt-0.5">
-                                        {typeInfo.icon}
+                            <Link
+                                key={m.id}
+                                to={`/melding/${m.id}`}
+                                className={`card overflow-hidden flex items-start gap-3 p-4 hover:bg-bg-hover transition-colors border-l-2 ${RAND[m.status] || 'border-l-overlay/10'}`}
+                            >
+                                <div className="w-9 h-9 rounded-lg bg-bg-app flex items-center justify-center flex-shrink-0 text-base mt-0.5">
+                                    {typeInfo.icon}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-semibold text-text-primary truncate">{m.materiaal?.naam || 'Onbekend item'}</p>
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-overlay/5 ${typeInfo.kleur}`}>
+                                            {typeInfo.label}
+                                        </span>
+                                        <MeldingStatusBadge status={m.status} />
                                     </div>
 
-                                    <div className="flex-1 min-w-0">
-                                        {/* Item naam + type badge */}
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="font-semibold text-text-primary truncate">{m.materiaal?.naam || 'Onbekend item'}</p>
-                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-overlay/5 ${typeInfo.kleur}`}>
-                                                {typeInfo.label}
-                                            </span>
-                                        </div>
+                                    {m.toelichting && (
+                                        <p className="text-text-secondary text-sm mt-0.5 line-clamp-2">{m.toelichting}</p>
+                                    )}
 
-                                        {/* Toelichting */}
-                                        {m.toelichting && (
-                                            <p className="text-text-secondary text-sm mt-0.5 line-clamp-2">{m.toelichting}</p>
-                                        )}
-
-                                        {/* Meta-info */}
-                                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                                            <span className="flex items-center gap-1 text-xs text-text-muted">
-                                                <User size={11} />{m.gemeld_door_medewerker?.naam || '—'}
-                                            </span>
-                                            <span className="flex items-center gap-1 text-xs text-text-muted">
-                                                <Clock size={11} /><DatumTijd tijdstip={m.tijdstip_gemeld} compact />
-                                            </span>
-                                            {!isOpen && m.opgelost_door_medewerker && (
-                                                <span className="flex items-center gap-1 text-xs text-success">
-                                                    <CheckCircle2 size={11} /> Opgelost door {m.opgelost_door_medewerker.naam}
-                                                </span>
-                                            )}
-                                        </div>
+                                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                        <span className="flex items-center gap-1 text-xs text-text-muted">
+                                            <User size={11} />{m.gemeld_door_medewerker?.naam || '—'}
+                                        </span>
+                                        <span className="flex items-center gap-1 text-xs text-text-muted">
+                                            <Clock size={11} /><DatumTijd tijdstip={m.tijdstip_gemeld} compact />
+                                        </span>
                                     </div>
+                                </div>
 
-                                    <ChevronRight size={16} className="text-text-muted flex-shrink-0 mt-1" />
-                                </Link>
-
-                                {/* Sluiten-knop — alleen bij open meldingen */}
-                                {isOpen && (
-                                    <div className="px-4 pb-3 pt-0">
-                                        <button
-                                            onClick={() => { setSluitenMelding(m); setPinFout('') }}
-                                            className="btn-ghost py-2 px-3 text-xs flex items-center gap-1.5 text-success border-success/30 hover:bg-success/10"
-                                        >
-                                            <CheckCircle2 size={14} /> Als opgelost markeren
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                <ChevronRight size={16} className="text-text-muted flex-shrink-0 mt-1" />
+                            </Link>
                         )
                     })}
                 </div>
@@ -188,24 +138,6 @@ export default function MeldingenOverzicht() {
             <p className="text-center text-text-muted text-xs mt-4">
                 {gefilterd.length} melding{gefilterd.length !== 1 ? 'en' : ''}
             </p>
-
-            {/* Modal: melding sluiten */}
-            {sluitenMelding && (
-                <Modal title="Melding afsluiten" onClose={() => setSluitenMelding(null)}>
-                    <div className="mb-4">
-                        <p className="text-text-secondary text-sm">
-                            Markeer de melding voor <strong className="text-text-primary">{sluitenMelding.materiaal?.naam}</strong> als opgelost.
-                        </p>
-                        <p className="text-text-muted text-xs mt-1">Bevestig met jouw pincode.</p>
-                    </div>
-                    <PincodeInvoer
-                        onBevestig={handleSluitPin}
-                        loading={pinLoading}
-                        error={pinFout}
-                        label="Jouw pincode"
-                    />
-                </Modal>
-            )}
         </div>
     )
 }

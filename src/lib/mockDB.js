@@ -504,7 +504,7 @@ export async function initMockDB() {
         })
     }
 
-    // Opgeloste onderhoudsmeldingen (naast de 2 open hieronder) → oplostijd + type-verdeling
+    // Afgeronde onderhoudsmeldingen (naast de openstaande hieronder) → oplostijd + type-verdeling
     const _histMeldingen = [
         { item: spheroBolt, type: 'kapot', gemeld: 35, opgelost: 33 },
         { item: ozobotEvo, type: 'mist', gemeld: 28, opgelost: 20 },
@@ -513,8 +513,10 @@ export async function initMockDB() {
         { item: legoSpike, type: 'mist', gemeld: 6, opgelost: 5 },
     ].map(({ item, type, gemeld, opgelost }) => ({
         id: uuid(), materiaal_id: item.id, gemeld_door: med2Id, type_melding: type,
-        toelichting: 'Afgehandeld', foto_url: null, status: 'opgelost', opgelost_door: med1Id,
-        tijdstip_gemeld: _tIso(gemeld * _dag), tijdstip_opgelost: _tIso(opgelost * _dag),
+        toelichting: 'Afgehandeld', foto_url: null, status: 'afgerond', opgelost_door: med1Id,
+        tijdstip_gemeld: _tIso(gemeld * _dag),
+        tijdstip_in_behandeling: _tIso(Math.round((gemeld + opgelost) / 2) * _dag),
+        tijdstip_opgelost: _tIso(opgelost * _dag),
     }))
 
     // Logins per medewerker (afgelopen ~30 dagen)
@@ -574,20 +576,32 @@ export async function initMockDB() {
         onderhoudsmeldingen: [
             ..._histMeldingen,
             {
-                id: uuid(), materiaal_id: classvrErm.id, gemeld_door: med1Id,
-                type_melding: 'kapot',
-                toelichting: 'Één headset opent niet meer — klem in het scharnier',
-                foto_url: null, status: 'open', opgelost_door: null,
-                tijdstip_gemeld: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-                tijdstip_opgelost: null,
-            },
-            {
+                // Verse melding (status 'nieuw', 6 uur oud)
                 id: uuid(), materiaal_id: mbItErm.id, gemeld_door: med2Id,
                 type_melding: 'mist',
                 toelichting: '2 USB micro-kabels ontbreken bij inlevering',
-                foto_url: null, status: 'open', opgelost_door: null,
+                foto_url: null, status: 'nieuw', opgelost_door: null,
                 tijdstip_gemeld: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+                tijdstip_in_behandeling: null, tijdstip_opgelost: null,
+            },
+            {
+                // In behandeling (opgepakt, maar nog niet klaar)
+                id: uuid(), materiaal_id: classvrErm.id, gemeld_door: med1Id,
+                type_melding: 'kapot',
+                toelichting: 'Één headset opent niet meer — klem in het scharnier',
+                foto_url: null, status: 'in_behandeling', opgelost_door: null,
+                tijdstip_gemeld: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+                tijdstip_in_behandeling: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
                 tijdstip_opgelost: null,
+            },
+            {
+                // Achterstand-voorbeeld: al 9 dagen 'nieuw', nooit opgepakt
+                id: uuid(), materiaal_id: spheroBolt.id, gemeld_door: med2Id,
+                type_melding: 'anders',
+                toelichting: 'Doosje beschadigd bij transport — graag nakijken',
+                foto_url: null, status: 'nieuw', opgelost_door: null,
+                tijdstip_gemeld: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+                tijdstip_in_behandeling: null, tijdstip_opgelost: null,
             },
         ],
         reserveringen: [
@@ -1294,7 +1308,7 @@ export function mockDeleteSerie(id) {
 export function mockGetOpenMeldingen() {
     const db = getDB()
     return db.onderhoudsmeldingen
-        .filter(m => m.status === 'open')
+        .filter(m => m.status !== 'afgerond')
         .map(m => {
             const mat = db.materiaal.find(i => i.id === m.materiaal_id)
             const med = db.medewerkers.find(i => i.id === m.gemeld_door)
@@ -1325,6 +1339,21 @@ export function mockGetAllMeldingen() {
 }
 
 
+export function mockGetMelding(meldingId) {
+    const db = getDB()
+    const m = db.onderhoudsmeldingen.find(i => i.id === meldingId)
+    if (!m) throw new Error('Melding niet gevonden')
+    const mat = db.materiaal.find(i => i.id === m.materiaal_id)
+    const med = db.medewerkers.find(i => i.id === m.gemeld_door)
+    const opgelostMed = m.opgelost_door ? db.medewerkers.find(i => i.id === m.opgelost_door) : null
+    return {
+        ...m,
+        materiaal: mat ? { naam: mat.naam, type: mat.type, qr_code: mat.qr_code } : null,
+        gemeld_door_medewerker: med ? { naam: med.naam, email: med.email } : null,
+        opgelost_door_medewerker: opgelostMed ? { naam: opgelostMed.naam } : null,
+    }
+}
+
 export function mockGetMeldingenVoorItem(materiaalId) {
     const db = getDB()
     return db.onderhoudsmeldingen
@@ -1346,25 +1375,29 @@ export function mockMaakMelding({ materiaalId, medewerkerId, typeMelding, toelic
     const nieuw = {
         id: uuid(), materiaal_id: materiaalId, gemeld_door: medewerkerId,
         type_melding: typeMelding, toelichting: toelichting || null, foto_url: fotoUrl || null,
-        status: 'open', opgelost_door: null,
-        tijdstip_gemeld: new Date().toISOString(), tijdstip_opgelost: null,
+        status: 'nieuw', opgelost_door: null,
+        tijdstip_gemeld: new Date().toISOString(),
+        tijdstip_in_behandeling: null, tijdstip_opgelost: null,
     }
     db.onderhoudsmeldingen.push(nieuw)
     saveDB(db)
     return nieuw
 }
 
-export function mockSluitMelding(meldingId, medewerkerId, notitie) {
+export function mockWijzigStatus(meldingId, medewerkerId, nieuweStatus) {
     const db = getDB()
     const idx = db.onderhoudsmeldingen.findIndex(m => m.id === meldingId)
     if (idx === -1) throw new Error('Melding niet gevonden')
-    db.onderhoudsmeldingen[idx] = {
-        ...db.onderhoudsmeldingen[idx],
-        status: 'opgelost',
-        opgelost_door: medewerkerId,
-        tijdstip_opgelost: new Date().toISOString(),
-        toelichting: notitie || db.onderhoudsmeldingen[idx].toelichting,
+    const bestaand = db.onderhoudsmeldingen[idx]
+    const nu = new Date().toISOString()
+    const patch = { status: nieuweStatus }
+    if (nieuweStatus === 'in_behandeling') {
+        patch.tijdstip_in_behandeling = bestaand.tijdstip_in_behandeling || nu
+    } else if (nieuweStatus === 'afgerond') {
+        patch.opgelost_door = medewerkerId
+        patch.tijdstip_opgelost = nu
     }
+    db.onderhoudsmeldingen[idx] = { ...bestaand, ...patch }
     saveDB(db)
 }
 

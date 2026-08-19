@@ -43,7 +43,7 @@ export default function MateriaalOverzicht() {
         }
         if (statusFilter === 'beschikbaar') res = res.filter(i => i.status === 'beschikbaar')
         if (statusFilter === 'in_gebruik') res = res.filter(i => i.status === 'in_gebruik')
-        if (statusFilter === 'melding') res = res.filter(i => i.onderhoudsmeldingen?.some(m => m.status === 'open'))
+        if (statusFilter === 'melding') res = res.filter(i => i.onderhoudsmeldingen?.some(m => m.status !== 'afgerond'))
         if (locatieFilter !== 'alle') {
             res = res.filter(i =>
                 i.huidige_locatie === locatieFilter || i.standaard_locatie === locatieFilter
@@ -191,7 +191,7 @@ export default function MateriaalOverzicht() {
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
                     {gefilterd.map(item => {
-                        const openMeldingen = item.onderhoudsmeldingen?.filter(m => m.status === 'open') || []
+                        const openMeldingen = item.onderhoudsmeldingen?.filter(m => m.status !== 'afgerond') || []
                         return (
                             <Link
                                 key={item.id}

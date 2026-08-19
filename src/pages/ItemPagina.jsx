@@ -75,7 +75,7 @@ export default function ItemPagina() {
         }
     }, [qrCode, isScanModus, laadItem])
 
-    const openMeldingen = item?.onderhoudsmeldingen?.filter(m => m.status === 'open') || []
+    const openMeldingen = item?.onderhoudsmeldingen?.filter(m => m.status !== 'afgerond') || []
     const heeftOpenMeldingen = openMeldingen.length > 0
     const isUitgechecktDoorMij = item?.huidige_medewerker_id === medewerker?.id
     const isUitgechecktDoorCollega = item?.status === 'in_gebruik' && !isUitgechecktDoorMij

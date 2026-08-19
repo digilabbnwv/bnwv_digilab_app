@@ -67,13 +67,15 @@ CREATE TABLE IF NOT EXISTS onderhoudsmeldingen (
   id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   materiaal_id        UUID NOT NULL REFERENCES materiaal(id) ON DELETE CASCADE,
   gemeld_door         UUID NOT NULL REFERENCES medewerkers(id) ON DELETE RESTRICT,
-  type_melding        TEXT NOT NULL CHECK (type_melding IN ('kapot', 'mist', 'verbruiksmateriaal')),
+  type_melding        TEXT NOT NULL CHECK (type_melding IN ('kapot', 'mist', 'verbruiksmateriaal', 'anders')),
   toelichting         TEXT,
   foto_url            TEXT,
-  status              TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'opgelost')),
+  -- Levenscyclus: nieuw -> in_behandeling -> afgerond
+  status              TEXT NOT NULL DEFAULT 'nieuw' CHECK (status IN ('nieuw', 'in_behandeling', 'afgerond')),
   opgelost_door       UUID REFERENCES medewerkers(id) ON DELETE SET NULL,
-  tijdstip_gemeld     TIMESTAMPTZ DEFAULT NOW(),
-  tijdstip_opgelost   TIMESTAMPTZ
+  tijdstip_gemeld           TIMESTAMPTZ DEFAULT NOW(),
+  tijdstip_in_behandeling   TIMESTAMPTZ,
+  tijdstip_opgelost         TIMESTAMPTZ
 );
 
 -- 5. Reserveringen tabel

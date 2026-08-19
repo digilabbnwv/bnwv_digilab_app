@@ -294,10 +294,19 @@ export const MELDING_LABELS = {
     kapot: 'Kapot',
     mist: 'Mist onderdeel',
     verbruiksmateriaal: 'Verbruiksmateriaal',
+    anders: 'Anders',
 }
 
 export function meldingLabel(type) {
     return MELDING_LABELS[type] || type || 'Onbekend'
+}
+
+const UUR = 3_600_000
+
+/** Gemiddelde van een reeks getallen (afgerond), of null bij leeg. */
+function gemAfgerond(getallen) {
+    if (getallen.length === 0) return null
+    return Math.round(getallen.reduce((a, b) => a + b, 0) / getallen.length)
 }
 
 /** Telt meldingen per type_melding. @returns {Array<{type, label, aantal}>} */
@@ -311,12 +320,11 @@ export function telMeldingenPerType(meldingen) {
         .sort((a, b) => b.aantal - a.aantal)
 }
 
-/** Telt meldingen per status. @returns {{open, opgelost}} */
+/** Telt meldingen per status. @returns {{nieuw, in_behandeling, afgerond}} */
 export function telMeldingenPerStatus(meldingen) {
-    const t = { open: 0, opgelost: 0 }
+    const t = { nieuw: 0, in_behandeling: 0, afgerond: 0 }
     for (const m of meldingen) {
-        if (m.status === 'opgelost') t.opgelost++
-        else t.open++
+        if (m.status in t) t[m.status]++
     }
     return t
 }
@@ -334,13 +342,62 @@ export function telMeldingenPerMateriaal(meldingen) {
         .sort((a, b) => b.aantal - a.aantal)
 }
 
-/** Gemiddelde oplostijd (uren, afgerond) van opgeloste meldingen. null als geen. */
+/** Gemiddelde totale oplostijd (uren, afgerond): gemeld → afgerond. null als geen. */
 export function gemOplostijd(meldingen) {
     const uren = meldingen
-        .filter(m => m.status === 'opgelost' && m.tijdstip_gemeld && m.tijdstip_opgelost)
-        .map(m => (new Date(m.tijdstip_opgelost).getTime() - new Date(m.tijdstip_gemeld).getTime()) / 3_600_000)
-    if (uren.length === 0) return null
-    return Math.round(uren.reduce((a, b) => a + b, 0) / uren.length)
+        .filter(m => m.status === 'afgerond' && m.tijdstip_gemeld && m.tijdstip_opgelost)
+        .map(m => (new Date(m.tijdstip_opgelost).getTime() - new Date(m.tijdstip_gemeld).getTime()) / UUR)
+    return gemAfgerond(uren)
+}
+
+/**
+ * Gemiddelde doorlooptijd per fase (uren, afgerond).
+ * @returns {{naarInBehandeling, naarAfgerond}} — beide null als er geen data is.
+ *   naarInBehandeling = gemeld → in behandeling genomen
+ *   naarAfgerond      = in behandeling → afgerond
+ */
+export function gemMeldingDoorlooptijd(meldingen) {
+    const naarInBehandeling = meldingen
+        .filter(m => m.tijdstip_gemeld && m.tijdstip_in_behandeling)
+        .map(m => (new Date(m.tijdstip_in_behandeling).getTime() - new Date(m.tijdstip_gemeld).getTime()) / UUR)
+    const naarAfgerond = meldingen
+        .filter(m => m.status === 'afgerond' && m.tijdstip_in_behandeling && m.tijdstip_opgelost)
+        .map(m => (new Date(m.tijdstip_opgelost).getTime() - new Date(m.tijdstip_in_behandeling).getTime()) / UUR)
+    return {
+        naarInBehandeling: gemAfgerond(naarInBehandeling),
+        naarAfgerond: gemAfgerond(naarAfgerond),
+    }
+}
+
+/**
+ * Niet-afgeronde meldingen die te lang in hun huidige status staan.
+ * @param {Array} meldingen
+ * @param {{nieuw:number, in_behandeling:number}} drempelsDagen - achterstanddrempel per status
+ * @param {number} nu - referentietijd in ms (default: nu) — expliciet meegeven maakt de functie testbaar
+ * @returns {Array<{id, materiaal, status, dagen}>} aflopend gesorteerd op dagen
+ */
+export function meldingenAchterstand(meldingen, drempelsDagen, nu = Date.now()) {
+    const resultaat = []
+    for (const m of meldingen) {
+        if (m.status === 'afgerond') continue
+        const drempel = drempelsDagen[m.status]
+        if (drempel == null) continue
+        // Meet vanaf het moment dat de huidige status inging.
+        const start = m.status === 'in_behandeling'
+            ? (m.tijdstip_in_behandeling || m.tijdstip_gemeld)
+            : m.tijdstip_gemeld
+        if (!start) continue
+        const dagen = (nu - new Date(start).getTime()) / (24 * UUR)
+        if (dagen >= drempel) {
+            resultaat.push({
+                id: m.id,
+                materiaal: m.materiaal?.naam || m.materiaal_id,
+                status: m.status,
+                dagen: Math.floor(dagen),
+            })
+        }
+    }
+    return resultaat.sort((a, b) => b.dagen - a.dagen)
 }
 
 // ── Pure aggregatiefuncties (workshops) ─────────────────────────

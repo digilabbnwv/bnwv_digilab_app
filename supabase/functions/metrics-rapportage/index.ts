@@ -121,7 +121,7 @@ async function bouwWekelijksRapport(supabaseAdmin: ReturnType<typeof createClien
     .gte('tot_datum', vanaf)
 
   const { data: openMeldingen } = alleMateriaalIds.length > 0
-    ? await supabaseAdmin.from('onderhoudsmeldingen').select('materiaal_id, type_melding, toelichting').eq('status', 'open').in('materiaal_id', alleMateriaalIds)
+    ? await supabaseAdmin.from('onderhoudsmeldingen').select('materiaal_id, type_melding, toelichting, status').neq('status', 'afgerond').in('materiaal_id', alleMateriaalIds)
     : { data: [] }
 
   // Boekingen (reserveringen + workshops, workshops als eendaagse boeking) per materiaal, voor conflictdetectie
@@ -145,12 +145,13 @@ async function bouwWekelijksRapport(supabaseAdmin: ReturnType<typeof createClien
     w.status,
   ])
 
-  const meldingRijen = (openMeldingen ?? []).map(m => [materiaalNaam.get(m.materiaal_id) ?? m.materiaal_id, m.type_melding, m.toelichting ?? '—'])
+  const statusLabel: Record<string, string> = { nieuw: 'Nieuw', in_behandeling: 'In behandeling' }
+  const meldingRijen = (openMeldingen ?? []).map(m => [materiaalNaam.get(m.materiaal_id) ?? m.materiaal_id, m.type_melding, statusLabel[m.status as string] ?? m.status, m.toelichting ?? '—'])
 
   const secties = [
     htmlSectie('Geplande activiteiten (komende 14 dagen)', workshopRijen, ['Datum', 'Tijd', 'Titel', 'Locatie', 'Materiaal', 'Status']),
     htmlSectie('Materiaalconflicten', conflicten, ['Materiaal', 'Boeking 1', 'Boeking 2']),
-    htmlSectie('Openstaande onderhoudsmeldingen (relevant materiaal)', meldingRijen, ['Materiaal', 'Type', 'Toelichting']),
+    htmlSectie('Openstaande onderhoudsmeldingen (relevant materiaal)', meldingRijen, ['Materiaal', 'Type', 'Status', 'Toelichting']),
   ]
 
   return {

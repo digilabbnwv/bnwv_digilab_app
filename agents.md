@@ -49,6 +49,7 @@ Het bouwen van een robuust, veilig en gebruiksvriendelijk systeem voor materiaal
 - `src/lib/logins.js`: Registreert inlog-momenten (voor de metrics-rapportage).
 - `supabase/functions/agenda-sync/index.ts`: De beveiligde brug naar Power Automate.
 - `supabase/functions/metrics-rapportage/index.ts`: Periodieke (wekelijks/maandelijks) metrics-e-mail, getriggerd door pg_cron. Secrets: `METRICS_REPORT_SECRET` (inbound), `WEBHOOK_URL_METRICS` (outbound naar Power Automate). Ontvangers worden beheerd in de tabel `rapportage_ontvangers`.
+- `supabase/functions/melding-notificatie/index.ts`: Directe e-mailnotificaties rond onderhoudsmeldingen (nieuwe melding → beheerders + bevestiging aanmaker; statuswijziging → aanmaker). Aangeroepen vanuit de app via `src/lib/meldingNotificatie.js`. Zoekt ontvangers server-side op (service-role), zodat e-mailadressen de client niet bereiken. Secret: `WEBHOOK_URL_MELDINGEN` (outbound naar Power Automate), hergebruikt `DIGILAB_WEBHOOK_SECRET`. Deployen met `--no-verify-jwt` (custom pincode-auth).
 - `playwright.config.js`: Specifieke Windows-vs-Linux setup voor E2E tests.
 
 *Let's build something great.*

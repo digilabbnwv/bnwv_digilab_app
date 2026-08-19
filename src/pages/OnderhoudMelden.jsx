@@ -60,7 +60,7 @@ export default function OnderhoudMelden() {
                 fotoUrl = await uploadFoto(foto, gekozenItemId)
             }
 
-            await maakMelding({
+            const nieuw = await maakMelding({
                 materiaalId: gekozenItemId,
                 medewerkerId: medewerker.id,
                 typeMelding: gekozenType,
@@ -68,8 +68,8 @@ export default function OnderhoudMelden() {
                 fotoUrl,
             })
 
-            toast.succes('Melding ingediend — zichtbaar voor alle medewerkers.')
-            navigate('/melding')
+            toast.succes('Melding ingediend — beheerders zijn op de hoogte gebracht.')
+            navigate(nieuw?.id ? `/melding/${nieuw.id}` : '/melding')
         } catch (err) {
             toast.fout(foutTekst(err, 'Melding indienen lukte niet — probeer het opnieuw.'))
         } finally {
