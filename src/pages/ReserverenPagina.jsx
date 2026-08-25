@@ -716,6 +716,50 @@ const STATUS_PILL = {
     geannuleerd: { label: 'Geannuleerd', cls: 'bg-error/15 text-error' },
 }
 
+// Uitleg bij het uitgeschakelde pennetje/prullenbak op een opgehaalde reservering.
+const UITLEG_OPGEHAALD = 'Deze reservering is al opgehaald en in gebruik. Wijzigen of annuleren kan niet meer — breng het materiaal terug (inchecken) om de reservering af te ronden.'
+
+// Uitgeschakelde actieknop met uitleg-popover. Klik-gestuurd zodat het op
+// desktop én mobiel gelijk werkt; sluit bij klik buiten de popover of Escape.
+function ActieUitleg({ icon: Icon, label, uitleg }) {
+    const [open, setOpen] = useState(false)
+    const wrapRef = useRef(null)
+
+    useEffect(() => {
+        if (!open) return
+        const sluit = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
+        const opEsc = (e) => { if (e.key === 'Escape') setOpen(false) }
+        document.addEventListener('mousedown', sluit)
+        document.addEventListener('keydown', opEsc)
+        return () => {
+            document.removeEventListener('mousedown', sluit)
+            document.removeEventListener('keydown', opEsc)
+        }
+    }, [open])
+
+    return (
+        <span className="relative inline-flex" ref={wrapRef}>
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted/40 hover:text-text-muted transition-colors cursor-help"
+                aria-label={`${label} — niet beschikbaar. Klik voor uitleg.`}
+                aria-expanded={open}
+            >
+                {Icon && <Icon size={16} />}
+            </button>
+            {open && (
+                <span
+                    role="tooltip"
+                    className="absolute right-0 top-full z-20 mt-1 w-60 rounded-lg border border-overlay/20 bg-bg-surface p-2.5 text-xs text-text-secondary shadow-lg leading-relaxed"
+                >
+                    {uitleg}
+                </span>
+            )}
+        </span>
+    )
+}
+
 function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, onBewerk, toonAnnuleer }) {
     if (reserveringen.length === 0) {
         return (
@@ -796,8 +840,9 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, on
                                 )}
                             </div>
 
-                            {/* Wijzig + annuleer — alleen voor nog-actieve eigen reserveringen.
-                                Een opgehaalde reservering wijzig/annuleer je niet, die breng je terug (inchecken). */}
+                            {/* Wijzig + annuleer bij eigen reserveringen.
+                                Actief → knoppen werken. Opgehaald → knoppen zichtbaar maar
+                                uitgeschakeld met uitleg-popover: die breng je terug (inchecken). */}
                             {(toonAnnuleer || isMijn) && r.status === 'actief' && (
                                 <div className="flex flex-shrink-0">
                                     {onBewerk && (
@@ -818,6 +863,14 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, on
                                     >
                                         <Trash2 size={16} />
                                     </button>
+                                </div>
+                            )}
+                            {(toonAnnuleer || isMijn) && r.status === 'opgehaald' && (
+                                <div className="flex flex-shrink-0">
+                                    {onBewerk && (
+                                        <ActieUitleg icon={Pencil} label="Reservering wijzigen" uitleg={UITLEG_OPGEHAALD} />
+                                    )}
+                                    <ActieUitleg icon={Trash2} label="Reservering annuleren" uitleg={UITLEG_OPGEHAALD} />
                                 </div>
                             )}
                         </div>
