@@ -1482,6 +1482,29 @@ export function mockAnnuleerReservering(reserveringId) {
     saveDB(db)
 }
 
+export function mockWijzigReservering(reserveringId, { materiaalId, vanDatum, totDatum, toelichting }, medewerkerId) {
+    const db = getDB()
+    if (!db.reserveringen) throw new Error('Reservering niet gevonden')
+    const idx = db.reserveringen.findIndex(r => r.id === reserveringId)
+    if (idx === -1) throw new Error('Reservering niet gevonden')
+    const bestaand = db.reserveringen[idx]
+    if (medewerkerId && bestaand.medewerker_id !== medewerkerId) {
+        throw new Error('Je kunt alleen je eigen reserveringen wijzigen')
+    }
+    if (bestaand.status !== 'actief') {
+        throw new Error('Reservering kan niet meer worden gewijzigd')
+    }
+    db.reserveringen[idx] = {
+        ...bestaand,
+        materiaal_id: materiaalId ?? bestaand.materiaal_id,
+        van_datum: vanDatum ?? bestaand.van_datum,
+        tot_datum: totDatum ?? bestaand.tot_datum,
+        toelichting: toelichting || null,
+    }
+    saveDB(db)
+    return enrichReservering(db.reserveringen[idx], db)
+}
+
 export function mockMarkeerOpgehaald(reserveringId) {
     const db = getDB()
     if (!db.reserveringen) return

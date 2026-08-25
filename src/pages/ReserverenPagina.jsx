@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
     getAlleReserveringen, getGearchiveerdeReserveringen,
-    maakReservering, annuleerReservering,
+    maakReservering, annuleerReservering, wijzigReservering,
 } from '../lib/reserveringen'
 import { getAllMateriaal } from '../lib/materiaal'
 import { getGeplandeWorkshopsVoorPeriode } from '../lib/geplandeWorkshops'
@@ -17,7 +17,7 @@ import { foutTekst } from '../lib/foutmelding'
 import ConflictBanner, { BeschikbaarBanner } from '../components/ConflictBanner'
 import {
     ChevronLeft, ChevronRight, Plus, Calendar,
-    Package, User, Trash2, Info,
+    Package, User, Trash2, Info, Pencil,
 } from 'lucide-react'
 
 // ── Datum hulpfuncties ───────────────────────────────────────────
@@ -94,8 +94,9 @@ export default function ReserverenPagina() {
     const [archiefLoading, setArchiefLoading] = useState(false)
     const [archiefGeladen, setArchiefGeladen] = useState(false)
 
-    // Nieuw reservering modal
+    // Nieuw/wijzig reservering modal. bewerkId=null → aanmaken, anders → wijzigen.
     const [toonNieuw, setToonNieuw] = useState(false)
+    const [bewerkId, setBewerkId] = useState(null)
     const [nieuwForm, setNieuwForm] = useState({
         materiaalId: '', vanDatum: vandaagStr(), totDatum: vandaagStr(), toelichting: '',
     })
@@ -119,7 +120,7 @@ export default function ReserverenPagina() {
         setConflictLoading(true)
         conflictTimer.current = setTimeout(async () => {
             try {
-                const result = await checkConflicten(nieuwForm.materiaalId, nieuwForm.vanDatum, nieuwForm.totDatum)
+                const result = await checkConflicten(nieuwForm.materiaalId, nieuwForm.vanDatum, nieuwForm.totDatum, bewerkId)
                 setConflicten(result)
             } catch (err) {
                 console.error('Conflictcheck fout:', err)
@@ -129,7 +130,7 @@ export default function ReserverenPagina() {
             }
         }, 300)
         return () => { if (conflictTimer.current) clearTimeout(conflictTimer.current) }
-    }, [nieuwForm.materiaalId, nieuwForm.vanDatum, nieuwForm.totDatum])
+    }, [nieuwForm.materiaalId, nieuwForm.vanDatum, nieuwForm.totDatum, bewerkId])
 
     const heeftWorkshopConflict = conflicten?.conflicten?.some(c => c.type === 'workshop') || false
 
@@ -185,11 +186,42 @@ export default function ReserverenPagina() {
     // Open nieuw-reservering modal via URL param
     useEffect(() => {
         if (searchParams.get('nieuw') === 'true') {
-            setToonNieuw(true)
+            openNieuw()
             searchParams.delete('nieuw')
             setSearchParams(searchParams, { replace: true })
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams, setSearchParams])
+
+    // ── Modal openen/sluiten ─────────────────────────────────────
+    const legeForm = () => ({ materiaalId: '', vanDatum: vandaagStr(), totDatum: vandaagStr(), toelichting: '' })
+
+    const openNieuw = () => {
+        setBewerkId(null)
+        setNieuwForm(legeForm())
+        setConflicten(null)
+        setNieuwFout('')
+        setToonNieuw(true)
+    }
+
+    const openBewerk = (r) => {
+        setBewerkId(r.id)
+        setNieuwForm({
+            materiaalId: r.materiaal_id,
+            vanDatum: r.van_datum,
+            totDatum: r.tot_datum,
+            toelichting: r.toelichting || '',
+        })
+        setConflicten(null)
+        setNieuwFout('')
+        setToonNieuw(true)
+    }
+
+    const sluitModal = () => {
+        setToonNieuw(false)
+        setBewerkId(null)
+        setNieuwFout('')
+    }
 
     // Bouw kalender: dagcellen met bijhorende reserveringen
     const aantalDagen = dagenInMaand(jaar, maand)
@@ -264,7 +296,7 @@ export default function ReserverenPagina() {
         setGekozenDag(vandaagStr())
     }
 
-    // Nieuw reservering opslaan
+    // Nieuw reservering opslaan of bestaande wijzigen
     const handleNieuwOpslaan = async () => {
         if (!nieuwForm.materiaalId) return setNieuwFout('Kies een product')
         if (!nieuwForm.vanDatum || !nieuwForm.totDatum) return setNieuwFout('Kies van- en tot-datum')
@@ -272,16 +304,27 @@ export default function ReserverenPagina() {
         if (heeftWorkshopConflict) return setNieuwFout('Kan niet reserveren — er is een workshop gepland op deze datum')
         setNieuwLoading(true); setNieuwFout('')
         try {
-            await maakReservering({
-                materiaalId: nieuwForm.materiaalId,
-                medewerkerId: medewerker.id,
-                vanDatum: nieuwForm.vanDatum,
-                totDatum: nieuwForm.totDatum,
-                toelichting: nieuwForm.toelichting,
-            })
+            if (bewerkId) {
+                await wijzigReservering(bewerkId, {
+                    materiaalId: nieuwForm.materiaalId,
+                    vanDatum: nieuwForm.vanDatum,
+                    totDatum: nieuwForm.totDatum,
+                    toelichting: nieuwForm.toelichting,
+                }, medewerker.id)
+                toast.succes('Reservering bijgewerkt!')
+            } else {
+                await maakReservering({
+                    materiaalId: nieuwForm.materiaalId,
+                    medewerkerId: medewerker.id,
+                    vanDatum: nieuwForm.vanDatum,
+                    totDatum: nieuwForm.totDatum,
+                    toelichting: nieuwForm.toelichting,
+                })
+                toast.succes('Reservering opgeslagen!')
+            }
             setToonNieuw(false)
-            setNieuwForm({ materiaalId: '', vanDatum: vandaagStr(), totDatum: vandaagStr(), toelichting: '' })
-            toast.succes('Reservering opgeslagen!')
+            setBewerkId(null)
+            setNieuwForm(legeForm())
             await laad()
         } catch (err) {
             setNieuwFout(foutTekst(err, 'Opslaan mislukt — probeer het opnieuw.'))
@@ -321,7 +364,7 @@ export default function ReserverenPagina() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setToonNieuw(true)}
+                        onClick={openNieuw}
                         className="btn-primary py-2 px-4 text-sm flex items-center gap-2"
                     >
                         <Plus size={16} /> Reserveer
@@ -467,6 +510,7 @@ export default function ReserverenPagina() {
                             medewerker={medewerker}
                             alleItems={alleItems}
                             onAnnuleer={setAnnuleerDoel}
+                            onBewerk={openBewerk}
                         />
                     </div>
                 </div>
@@ -491,6 +535,7 @@ export default function ReserverenPagina() {
                                         medewerker={medewerker}
                                         alleItems={alleItems}
                                         onAnnuleer={setAnnuleerDoel}
+                                        onBewerk={openBewerk}
                                     />
                                 </div>
                             ))}
@@ -529,7 +574,7 @@ export default function ReserverenPagina() {
                         <div className="card p-8 text-center">
                             <Calendar size={32} className="mx-auto mb-3 text-text-muted opacity-30" />
                             <p className="text-text-muted text-sm">Je hebt nog geen reserveringen</p>
-                            <button onClick={() => setToonNieuw(true)} className="btn-primary mt-4 text-sm py-2">
+                            <button onClick={openNieuw} className="btn-primary mt-4 text-sm py-2">
                                 Eerste reservering maken
                             </button>
                         </div>
@@ -539,6 +584,7 @@ export default function ReserverenPagina() {
                             medewerker={medewerker}
                             alleItems={alleItems}
                             onAnnuleer={setAnnuleerDoel}
+                            onBewerk={openBewerk}
                             toonAnnuleer
                         />
                     )}
@@ -555,7 +601,7 @@ export default function ReserverenPagina() {
 
             {/* Nieuw reservering modal */}
             {toonNieuw && (
-                <Modal title="Nieuwe reservering" onClose={() => { setToonNieuw(false); setNieuwFout('') }} size="lg" sluitBijBackdrop={false}>
+                <Modal title={bewerkId ? 'Reservering wijzigen' : 'Nieuwe reservering'} onClose={sluitModal} size="lg" sluitBijBackdrop={false}>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-text-secondary text-sm font-medium mb-2">Materiaal *</label>
@@ -637,7 +683,7 @@ export default function ReserverenPagina() {
                         >
                             {nieuwLoading
                                 ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                : <><Calendar size={16} /> Reservering opslaan</>
+                                : <><Calendar size={16} /> {bewerkId ? 'Wijzigingen opslaan' : 'Reservering opslaan'}</>
                             }
                         </button>
                     </div>
@@ -670,7 +716,7 @@ const STATUS_PILL = {
     geannuleerd: { label: 'Geannuleerd', cls: 'bg-error/15 text-error' },
 }
 
-function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, toonAnnuleer }) {
+function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, onBewerk, toonAnnuleer }) {
     if (reserveringen.length === 0) {
         return (
             <div className="card p-6 text-center">
@@ -750,17 +796,29 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, to
                                 )}
                             </div>
 
-                            {/* Annuleer knop — alleen voor nog-actieve eigen reserveringen.
-                                Een opgehaalde reservering annuleer je niet, die breng je terug (inchecken). */}
+                            {/* Wijzig + annuleer — alleen voor nog-actieve eigen reserveringen.
+                                Een opgehaalde reservering wijzig/annuleer je niet, die breng je terug (inchecken). */}
                             {(toonAnnuleer || isMijn) && r.status === 'actief' && (
-                                <button
-                                    onClick={() => onAnnuleer(r)}
-                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-error transition-colors flex-shrink-0"
-                                    title="Annuleer reservering"
-                                    aria-label="Reservering annuleren"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                <div className="flex flex-shrink-0">
+                                    {onBewerk && (
+                                        <button
+                                            onClick={() => onBewerk(r)}
+                                            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-primary transition-colors"
+                                            title="Reservering wijzigen"
+                                            aria-label="Reservering wijzigen"
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => onAnnuleer(r)}
+                                        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-error transition-colors"
+                                        title="Annuleer reservering"
+                                        aria-label="Reservering annuleren"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>

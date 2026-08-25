@@ -12,4 +12,5 @@ vi.mock('./src/lib/supabase', () => ({
 vi.mock('./src/lib/agendaSync', () => ({
     syncAgendaAanmaken: vi.fn(),
     syncAgendaAnnuleren: vi.fn(),
+    syncAgendaWijzigen: vi.fn(),
 }))

@@ -21,10 +21,11 @@
  */
 
 import { supabase } from './supabase'
-import { syncAgendaAanmaken, syncAgendaAnnuleren } from './agendaSync'
+import { syncAgendaAanmaken, syncAgendaAnnuleren, syncAgendaWijzigen } from './agendaSync'
 import {
     mockGetAlleReserveringen, mockGetReserveringenVoorItem,
     mockGetMijnReserveringen, mockMaakReservering, mockAnnuleerReservering,
+    mockWijzigReservering,
     mockMarkeerOpgehaald, mockMarkeerTeruggebracht, mockGetGearchiveerdeReserveringen,
 } from './mockDB'
 
@@ -101,6 +102,43 @@ export async function maakReservering({ materiaalId, medewerkerId, vanDatum, tot
 
     // Sync met agenda op de achtergrond (niet wachten op resultaat)
     syncAgendaAanmaken(reservering).catch(err => console.error('[maakReservering] Agenda sync fout:', err))
+
+    return reservering
+}
+
+// ── Wijzigen ────────────────────────────────────────────────────
+
+/**
+ * Wijzig een bestaande reservering (materiaal, datums, toelichting).
+ * Alleen de eigenaar mag wijzigen en alleen zolang de reservering nog
+ * 'actief' is — een opgehaalde reservering breng je terug, die wijzig je niet.
+ *
+ * @param {string} reserveringId
+ * @param {{ materiaalId: string, vanDatum: string, totDatum: string, toelichting?: string }} wijziging
+ * @param {string} medewerkerId - eigenaarscheck
+ * @returns {Promise<object>} de bijgewerkte reservering (met materiaal + medewerker)
+ */
+export async function wijzigReservering(reserveringId, { materiaalId, vanDatum, totDatum, toelichting }, medewerkerId) {
+    if (MOCK) return mockWijzigReservering(reserveringId, { materiaalId, vanDatum, totDatum, toelichting }, medewerkerId)
+
+    const { data, error } = await supabase
+        .from('reserveringen')
+        .update({
+            materiaal_id: materiaalId,
+            van_datum: vanDatum,
+            tot_datum: totDatum,
+            toelichting: toelichting || null,
+        })
+        .eq('id', reserveringId)
+        .eq('medewerker_id', medewerkerId)
+        .eq('status', 'actief')
+        .select('*, materiaal(id, naam, type, qr_code), medewerker:medewerkers(id, naam)')
+    if (error) throw error
+    const reservering = data?.[0]
+    if (!reservering) throw new Error('Reservering niet gevonden of kan niet meer worden gewijzigd')
+
+    // Sync wijziging met agenda op de achtergrond (niet wachten op resultaat)
+    syncAgendaWijzigen(reservering).catch(err => console.error('[wijzigReservering] Agenda sync fout:', err))
 
     return reservering
 }
