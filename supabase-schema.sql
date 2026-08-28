@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS medewerkers (
   email           TEXT NOT NULL UNIQUE,
   pincode_hash    TEXT NOT NULL,
   rol             TEXT NOT NULL DEFAULT 'medewerker' CHECK (rol IN ('medewerker', 'beheerder')),
+  gearchiveerd    BOOLEAN NOT NULL DEFAULT false,   -- gedeactiveerd: kan niet inloggen, verborgen uit keuzelijsten
   aangemaakt_op   TIMESTAMPTZ DEFAULT NOW()
 );
 

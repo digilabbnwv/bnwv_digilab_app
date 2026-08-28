@@ -46,12 +46,13 @@ export async function inloggen({ email, pincode }) {
     const pincode_hash = await hashPin(pincode)
     const { data, error } = await supabase
         .from('medewerkers')
-        .select('id, naam, email, rol, aangemaakt_op')
+        .select('id, naam, email, rol, gearchiveerd, aangemaakt_op')
         .eq('email', email.toLowerCase().trim())
         .eq('pincode_hash', pincode_hash)
         .single()
 
     if (error || !data) throw new Error('Onjuist e-mailadres of pincode')
+    if (data.gearchiveerd) throw new Error('Dit account is gedeactiveerd. Neem contact op met een beheerder.')
     logLogin(data.id)
     return data
 }

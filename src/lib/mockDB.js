@@ -549,8 +549,8 @@ export async function initMockDB() {
     const newDB = {
         version: DB_VERSION,
         medewerkers: [
-            { id: med1Id, naam: 'Jasper Geertsma', email: 'jasper@bibliotheek.nl', pincode_hash: pinHash, rol: 'beheerder', aangemaakt_op: new Date().toISOString() },
-            { id: med2Id, naam: 'Lisa van den Berg', email: 'lisa@bibliotheek.nl', pincode_hash: pinHash2, rol: 'medewerker', aangemaakt_op: new Date().toISOString() },
+            { id: med1Id, naam: 'Jasper Geertsma', email: 'jasper@bibliotheek.nl', pincode_hash: pinHash, rol: 'beheerder', gearchiveerd: false, aangemaakt_op: new Date().toISOString() },
+            { id: med2Id, naam: 'Lisa van den Berg', email: 'lisa@bibliotheek.nl', pincode_hash: pinHash2, rol: 'medewerker', gearchiveerd: false, aangemaakt_op: new Date().toISOString() },
         ],
         materiaal: materiaalItems,
         labels: [
@@ -725,8 +725,74 @@ export async function mockInloggen({ email, pincode }) {
     const pincode_hash = await hashPin(pincode)
     const med = db.medewerkers.find(m => m.email === email && m.pincode_hash === pincode_hash)
     if (!med) throw new Error('Onjuist e-mailadres of pincode')
+    if (med.gearchiveerd) throw new Error('Dit account is gedeactiveerd. Neem contact op met een beheerder.')
     mockLogLogin(med.id)
     return med
+}
+
+// ── Medewerkers (gebruikers) beheer mock functies ───────────────
+
+export function mockGetAlleMedewerkers({ inclusiefGearchiveerd = false } = {}) {
+    const db = getDB()
+    return (db.medewerkers || [])
+        .filter(m => inclusiefGearchiveerd || !m.gearchiveerd)
+        .map(m => ({
+            id: m.id, naam: m.naam, email: m.email, rol: m.rol,
+            gearchiveerd: !!m.gearchiveerd, aangemaakt_op: m.aangemaakt_op,
+        }))
+        .sort((a, b) => a.naam.localeCompare(b.naam))
+}
+
+function _publiekeMedewerker(m) {
+    return { id: m.id, naam: m.naam, email: m.email, rol: m.rol, gearchiveerd: !!m.gearchiveerd, aangemaakt_op: m.aangemaakt_op }
+}
+
+export async function mockMaakMedewerker({ naam, email, rol = 'medewerker', pincode }) {
+    const db = getDB()
+    const e = email.toLowerCase().trim()
+    if (db.medewerkers.find(m => m.email === e)) throw new Error('E-mailadres is al in gebruik')
+    const pincode_hash = await hashPin(pincode)
+    const nieuw = {
+        id: uuid(), naam: naam.trim(), email: e, pincode_hash, rol,
+        gearchiveerd: false, aangemaakt_op: new Date().toISOString(),
+    }
+    db.medewerkers.push(nieuw)
+    saveDB(db)
+    return _publiekeMedewerker(nieuw)
+}
+
+export function mockUpdateMedewerker(id, { naam, email, rol }) {
+    const db = getDB()
+    const idx = db.medewerkers.findIndex(m => m.id === id)
+    if (idx === -1) throw new Error('Medewerker niet gevonden')
+    const e = email !== undefined ? email.toLowerCase().trim() : db.medewerkers[idx].email
+    if (email !== undefined && db.medewerkers.find(m => m.email === e && m.id !== id)) {
+        throw new Error('E-mailadres is al in gebruik')
+    }
+    db.medewerkers[idx] = {
+        ...db.medewerkers[idx],
+        ...(naam !== undefined ? { naam: naam.trim() } : {}),
+        ...(email !== undefined ? { email: e } : {}),
+        ...(rol !== undefined ? { rol } : {}),
+    }
+    saveDB(db)
+    return _publiekeMedewerker(db.medewerkers[idx])
+}
+
+export function mockZetGearchiveerd(id, gearchiveerd) {
+    const db = getDB()
+    const idx = db.medewerkers.findIndex(m => m.id === id)
+    if (idx === -1) throw new Error('Medewerker niet gevonden')
+    db.medewerkers[idx] = { ...db.medewerkers[idx], gearchiveerd: !!gearchiveerd }
+    saveDB(db)
+}
+
+export async function mockResetPincode(id, nieuwePincode) {
+    const db = getDB()
+    const idx = db.medewerkers.findIndex(m => m.id === id)
+    if (idx === -1) throw new Error('Medewerker niet gevonden')
+    db.medewerkers[idx] = { ...db.medewerkers[idx], pincode_hash: await hashPin(nieuwePincode) }
+    saveDB(db)
 }
 
 export function mockLogLogin(medewerker_id) {

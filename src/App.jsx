@@ -34,9 +34,11 @@ import RapportageOnderhoud from './pages/RapportageOnderhoud'
 import RapportageWorkshops from './pages/RapportageWorkshops'
 import RapportageLesbrieven from './pages/RapportageLesbrieven'
 import RapportageGebruikers from './pages/RapportageGebruikers'
+import GebruikersBeheer from './pages/GebruikersBeheer'
 import BottomNav from './components/BottomNav'
 import SideNav from './components/SideNav'
 import AppHeader from './components/AppHeader'
+import SimulatieBanner from './components/SimulatieBanner'
 
 const MOCK = import.meta.env.VITE_MOCK_MODE === 'true'
 
@@ -79,6 +81,7 @@ function PageLayout({ children }) {
       <SideNav />
       <div className="flex flex-col min-h-dvh flex-1 min-w-0">
         <div className={MOCK ? 'pt-6' : ''}>
+          <SimulatieBanner />
           <AppHeader />
         </div>
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-10">
@@ -154,6 +157,9 @@ export default function App() {
 
         {/* Reserveren */}
         <Route path="/reserveren" element={<ProtectedRoute><PageLayout><ReserverenPagina /></PageLayout></ProtectedRoute>} />
+
+        {/* Gebruikersbeheer (beheerder) */}
+        <Route path="/beheer/gebruikers" element={<BeheerderRoute><PageLayout><GebruikersBeheer /></PageLayout></BeheerderRoute>} />
 
         {/* Profiel */}
         <Route path="/profiel" element={<ProtectedRoute><PageLayout><ProfielPagina /></PageLayout></ProtectedRoute>} />

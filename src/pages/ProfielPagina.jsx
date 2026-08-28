@@ -7,10 +7,10 @@ import { DatumTijd, LaadIndicator } from '../components/UI'
 import Modal from '../components/Modal'
 import PincodeInvoer from '../components/PincodeInvoer'
 import { useTheme } from '../context/ThemeContext'
-import { LogOut, User, Key, Clock, ChevronRight, Package, ArrowUpCircle, ArrowDownCircle, Sun, Monitor, Moon, Pencil, Check, X, HelpCircle } from 'lucide-react'
+import { LogOut, User, Key, Clock, ChevronRight, Package, ArrowUpCircle, ArrowDownCircle, Sun, Monitor, Moon, Pencil, Check, X, HelpCircle, ShieldCheck, Users } from 'lucide-react'
 
 export default function ProfielPagina() {
-    const { medewerker, logout, updateMedewerker } = useAuth()
+    const { medewerker, logout, updateMedewerker, echtIsBeheerder, simuleertGebruiker, setSimulatieRol } = useAuth()
     const { thema, setThema } = useTheme()
     const navigate = useNavigate()
 
@@ -172,6 +172,59 @@ export default function ProfielPagina() {
                     })}
                 </div>
             </div>
+
+            {/* Beheerder-hulpmiddelen (alleen voor echte beheerders) */}
+            {echtIsBeheerder && (
+                <div className="card p-4 mb-4">
+                    <p className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-1.5">
+                        <ShieldCheck size={15} className="text-primary" /> Beheerder
+                    </p>
+
+                    {/* Rol-simulatie: bekijk de app als beheerder of als gewone gebruiker */}
+                    <p className="text-xs text-text-muted mb-2">Bekijk de app als</p>
+                    <div className="flex gap-1 bg-bg-app rounded-xl p-1 mb-1">
+                        {[
+                            { key: 'beheerder', label: 'Beheerder', icon: ShieldCheck },
+                            { key: 'medewerker', label: 'Gewone gebruiker', icon: User },
+                        ].map((item) => {
+                            const Icon = item.icon
+                            const actief = item.key === 'medewerker' ? simuleertGebruiker : !simuleertGebruiker
+                            return (
+                                <button
+                                    key={item.key}
+                                    onClick={() => setSimulatieRol(item.key === 'medewerker' ? 'medewerker' : null)}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${actief
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                        : 'text-text-muted hover:text-text-secondary'
+                                        }`}
+                                >
+                                    <Icon size={14} />
+                                    {item.label}
+                                </button>
+                            )
+                        })}
+                    </div>
+                    <p className="text-[11px] text-text-muted mb-3">
+                        Alleen om te testen wat een gebruiker ziet. Verandert niets aan je account.
+                    </p>
+
+                    {/* Ingang naar gebruikersbeheer */}
+                    <button
+                        onClick={() => navigate('/beheer/gebruikers')}
+                        disabled={simuleertGebruiker}
+                        className="w-full flex items-center gap-3 p-3 -mx-1 rounded-xl hover:bg-bg-hover transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    >
+                        <span className="text-primary"><Users size={18} /></span>
+                        <div className="flex-1">
+                            <p className="text-text-primary font-medium text-sm">Gebruikersbeheer</p>
+                            <p className="text-text-muted text-xs">
+                                {simuleertGebruiker ? 'Stop eerst de gebruiker-weergave' : 'Gebruikers aanmaken, bewerken en archiveren'}
+                            </p>
+                        </div>
+                        <ChevronRight size={16} className="text-text-muted" />
+                    </button>
+                </div>
+            )}
 
             {/* Acties */}
             <div className="card mb-4 divide-y divide-overlay/10">
