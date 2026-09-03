@@ -9,6 +9,8 @@ import { getAllMateriaal } from '../lib/materiaal'
 import { getGeplandeWorkshopsVoorPeriode } from '../lib/geplandeWorkshops'
 import { checkConflicten } from '../lib/beschikbaarheid'
 import { LaadIndicator } from '../components/UI'
+import { useWeergaveVoorkeur } from '../hooks/useWeergaveVoorkeur'
+import WeergaveToggle from '../components/WeergaveToggle'
 import Modal from '../components/Modal'
 import BevestigModal from '../components/BevestigModal'
 import MateriaalSelect from '../components/MateriaalSelect'
@@ -88,6 +90,9 @@ export default function ReserverenPagina() {
 
     // Tab: kalender vs mijn reserveringen
     const [tab, setTab] = useState('kalender')
+
+    // Weergave van de reserveringenlijst: tabel (standaard) of tegels
+    const [weergave, setWeergave] = useWeergaveVoorkeur('reserveringen')
 
     // Archief (afgeronde + geannuleerde reserveringen) — lazy geladen
     const [archief, setArchief] = useState([])
@@ -393,6 +398,11 @@ export default function ReserverenPagina() {
                 ))}
             </div>
 
+            {/* Weergave-schakelaar voor de reserveringenlijst */}
+            <div className="flex justify-end mb-3">
+                <WeergaveToggle weergave={weergave} onChange={setWeergave} />
+            </div>
+
             {loading ? <LaadIndicator /> : tab === 'kalender' ? (
                 <div className="lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:gap-6 lg:items-start">
                     <div>
@@ -511,6 +521,7 @@ export default function ReserverenPagina() {
                             alleItems={alleItems}
                             onAnnuleer={setAnnuleerDoel}
                             onBewerk={openBewerk}
+                            weergave={weergave}
                         />
                     </div>
                 </div>
@@ -536,6 +547,7 @@ export default function ReserverenPagina() {
                                         alleItems={alleItems}
                                         onAnnuleer={setAnnuleerDoel}
                                         onBewerk={openBewerk}
+                                        weergave={weergave}
                                     />
                                 </div>
                             ))}
@@ -561,6 +573,7 @@ export default function ReserverenPagina() {
                             medewerker={medewerker}
                             alleItems={alleItems}
                             onAnnuleer={setAnnuleerDoel}
+                            weergave={weergave}
                         />
                     )}
                 </div>
@@ -586,6 +599,7 @@ export default function ReserverenPagina() {
                             onAnnuleer={setAnnuleerDoel}
                             onBewerk={openBewerk}
                             toonAnnuleer
+                            weergave={weergave}
                         />
                     )}
                 </div>
@@ -760,13 +774,25 @@ function ActieUitleg({ icon: Icon, label, uitleg }) {
     )
 }
 
-function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, onBewerk, toonAnnuleer }) {
+function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, onBewerk, toonAnnuleer, weergave = 'tabel' }) {
     if (reserveringen.length === 0) {
         return (
             <div className="card p-6 text-center">
                 <Calendar size={28} className="mx-auto mb-2 text-text-muted opacity-30" />
                 <p className="text-text-muted text-sm">Geen reserveringen</p>
             </div>
+        )
+    }
+
+    if (weergave === 'tabel') {
+        return (
+            <ReserveringTabel
+                reserveringen={reserveringen}
+                medewerker={medewerker}
+                onAnnuleer={onAnnuleer}
+                onBewerk={onBewerk}
+                toonAnnuleer={toonAnnuleer}
+            />
         )
     }
 
@@ -878,5 +904,159 @@ function ReserveringLijst({ reserveringen, medewerker, alleItems, onAnnuleer, on
                 )
             })}
         </div>
+    )
+}
+
+// ── Reservering tabelweergave ───────────────────────────────────
+// Zelfde gegevens en acties als de tegels, maar per rij zodat er meer op één
+// scherm past. Periode en 'wie' vouwen op smalle schermen als subregel onder
+// de naam. Workshops blijven rood gemarkeerd.
+
+function ReserveringTabel({ reserveringen, medewerker, onAnnuleer, onBewerk, toonAnnuleer }) {
+    return (
+        <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-overlay/10 text-left text-[11px] uppercase tracking-wider text-text-muted">
+                            <th className="font-semibold px-4 py-2.5">Materiaal</th>
+                            <th className="font-semibold px-4 py-2.5 hidden sm:table-cell">Periode</th>
+                            <th className="font-semibold px-4 py-2.5 hidden md:table-cell">Wie</th>
+                            <th className="font-semibold px-4 py-2.5">Status</th>
+                            <th className="font-semibold px-4 py-2.5 text-right">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {reserveringen.map(r => (
+                            <ReserveringRij
+                                key={r._isWorkshop ? `ws-${r.id}` : r.id}
+                                r={r}
+                                medewerker={medewerker}
+                                onAnnuleer={onAnnuleer}
+                                onBewerk={onBewerk}
+                                toonAnnuleer={toonAnnuleer}
+                            />
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+function ReserveringRij({ r, medewerker, onAnnuleer, onBewerk, toonAnnuleer }) {
+    // Workshop-rij
+    if (r._isWorkshop) {
+        const tijd = r.start_tijd ? `${r.start_tijd.slice(0, 5)}–${r.eind_tijd?.slice(0, 5) || ''}` : ''
+        return (
+            <tr className="border-b border-overlay/10 last:border-0" style={{ backgroundColor: 'rgb(239 68 68 / 0.05)' }}>
+                <td className="px-4 py-2.5">
+                    <Link to={`/workshops/${r.id}`} className="font-semibold text-error hover:underline block truncate">
+                        🎓 {r.titel}
+                    </Link>
+                    <p className="text-xs text-text-muted">Workshop · {r.locatie}</p>
+                    {/* Subregel op mobiel */}
+                    <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1 sm:hidden">
+                        <Calendar size={11} /> {formatDatum(r.datum)}{tijd && <> · {tijd}</>}
+                    </p>
+                </td>
+                <td className="px-4 py-2.5 hidden sm:table-cell whitespace-nowrap text-text-secondary">
+                    <span className="flex items-center gap-1.5">
+                        <Calendar size={13} className="text-text-muted" />
+                        {formatDatum(r.datum)}{tijd && <> · {tijd}</>}
+                    </span>
+                </td>
+                <td className="px-4 py-2.5 hidden md:table-cell text-text-muted">—</td>
+                <td className="px-4 py-2.5">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-error/15 text-error">Workshop</span>
+                </td>
+                <td className="px-4 py-2.5"></td>
+            </tr>
+        )
+    }
+
+    const isMijn = r.medewerker?.id === medewerker.id
+    const periode = (
+        <>
+            {formatDatum(r.van_datum)}
+            {r.van_datum !== r.tot_datum && <> → {formatDatum(r.tot_datum)}</>}
+        </>
+    )
+
+    return (
+        <tr className="border-b border-overlay/10 last:border-0 hover:bg-bg-hover transition-colors">
+            {/* Materiaal */}
+            <td className="px-4 py-2.5">
+                <Link
+                    to={`/item/${r.materiaal?.qr_code}`}
+                    className="font-semibold text-text-primary hover:text-primary transition-colors block truncate"
+                >
+                    {r.materiaal?.naam || 'Onbekend item'}
+                </Link>
+                {r.toelichting && (
+                    <p className="text-xs text-text-muted italic line-clamp-1">"{r.toelichting}"</p>
+                )}
+                {/* Subregel op mobiel: periode + wie (die daar geen eigen kolom hebben) */}
+                <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1 md:hidden">
+                    <Calendar size={11} /> <span className="whitespace-nowrap">{periode}</span>
+                    <span className="opacity-60">·</span>
+                    {isMijn ? 'Jij' : (r.medewerker?.naam || '—')}
+                </p>
+            </td>
+            {/* Periode */}
+            <td className="px-4 py-2.5 hidden sm:table-cell whitespace-nowrap text-text-secondary">
+                <span className="flex items-center gap-1.5">
+                    <Calendar size={13} className="text-text-muted" />
+                    {periode}
+                </span>
+            </td>
+            {/* Wie */}
+            <td className="px-4 py-2.5 hidden md:table-cell whitespace-nowrap">
+                {isMijn
+                    ? <span className="text-primary font-medium">Jij</span>
+                    : <span className="text-text-secondary">{r.medewerker?.naam || '—'}</span>}
+            </td>
+            {/* Status */}
+            <td className="px-4 py-2.5">
+                {STATUS_PILL[r.status]
+                    ? <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_PILL[r.status].cls}`}>{STATUS_PILL[r.status].label}</span>
+                    : <span className="text-xs text-text-muted">Actief</span>}
+            </td>
+            {/* Acties */}
+            <td className="px-4 py-2.5">
+                <div className="flex justify-end">
+                    {(toonAnnuleer || isMijn) && r.status === 'actief' && (
+                        <>
+                            {onBewerk && (
+                                <button
+                                    onClick={() => onBewerk(r)}
+                                    className="min-w-[36px] min-h-[36px] flex items-center justify-center text-text-muted hover:text-primary transition-colors"
+                                    title="Reservering wijzigen"
+                                    aria-label="Reservering wijzigen"
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                            )}
+                            <button
+                                onClick={() => onAnnuleer(r)}
+                                className="min-w-[36px] min-h-[36px] flex items-center justify-center text-text-muted hover:text-error transition-colors"
+                                title="Annuleer reservering"
+                                aria-label="Reservering annuleren"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </>
+                    )}
+                    {(toonAnnuleer || isMijn) && r.status === 'opgehaald' && (
+                        <>
+                            {onBewerk && (
+                                <ActieUitleg icon={Pencil} label="Reservering wijzigen" uitleg={UITLEG_OPGEHAALD} />
+                            )}
+                            <ActieUitleg icon={Trash2} label="Reservering annuleren" uitleg={UITLEG_OPGEHAALD} />
+                        </>
+                    )}
+                </div>
+            </td>
+        </tr>
     )
 }

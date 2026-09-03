@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getAllMateriaal } from '../lib/materiaal'
 import { StatusBadge, LaadIndicator } from '../components/UI'
 import { useAuth } from '../context/AuthContext'
+import { useWeergaveVoorkeur } from '../hooks/useWeergaveVoorkeur'
+import WeergaveToggle from '../components/WeergaveToggle'
 import BeschikbaarheidIndicator from '../components/BeschikbaarheidIndicator'
 import { Search, Package, Plus, MapPin, User, AlertTriangle, QrCode, Tag, Settings, Archive } from 'lucide-react'
 
@@ -16,6 +18,7 @@ export default function MateriaalOverzicht() {
     const [locatieFilter, setLocatieFilter] = useState('alle')
     const [labelFilter, setLabelFilter] = useState('alle')
     const [loading, setLoading] = useState(true)
+    const [weergave, setWeergave] = useWeergaveVoorkeur('materiaal')
 
     useEffect(() => {
         getAllMateriaal()
@@ -181,6 +184,12 @@ export default function MateriaalOverzicht() {
                 </div>
             )}
 
+            {/* Weergave-schakelaar + telling */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-text-muted text-sm">{gefilterd.length} item{gefilterd.length !== 1 ? 's' : ''}</p>
+                <WeergaveToggle weergave={weergave} onChange={setWeergave} />
+            </div>
+
             {loading ? (
                 <LaadIndicator />
             ) : gefilterd.length === 0 ? (
@@ -188,6 +197,8 @@ export default function MateriaalOverzicht() {
                     <Package size={32} className="mx-auto mb-2 text-text-muted opacity-30" />
                     <p className="text-text-muted text-sm">Geen items gevonden</p>
                 </div>
+            ) : weergave === 'tabel' ? (
+                <MateriaalTabel items={gefilterd} />
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
                     {gefilterd.map(item => {
@@ -238,8 +249,108 @@ export default function MateriaalOverzicht() {
                     })}
                 </div>
             )}
-
-            <p className="text-center text-text-muted text-xs mt-4">{gefilterd.length} item{gefilterd.length !== 1 ? 's' : ''}</p>
         </div>
+    )
+}
+
+// ── Tabelweergave ────────────────────────────────────────────────
+// Compacte rijen i.p.v. tegels: meer items op één scherm. Kolommen vouwen
+// progressief weg op smallere schermen (locatie → labels → beschikbaarheid),
+// waarbij type + locatie dan als subregel onder de naam verschijnen.
+
+function MateriaalTabel({ items }) {
+    return (
+        <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-overlay/10 text-left text-[11px] uppercase tracking-wider text-text-muted">
+                            <th className="font-semibold px-4 py-2.5">Item</th>
+                            <th className="font-semibold px-4 py-2.5">Status</th>
+                            <th className="font-semibold px-4 py-2.5 hidden sm:table-cell">Locatie / gebruiker</th>
+                            <th className="font-semibold px-4 py-2.5 hidden md:table-cell">Labels</th>
+                            <th className="font-semibold px-4 py-2.5 hidden lg:table-cell">Beschikbaar (7 dg)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items.map(item => <MateriaalRij key={item.id} item={item} />)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+function MateriaalRij({ item }) {
+    const navigate = useNavigate()
+    const openMeldingen = item.onderhoudsmeldingen?.filter(m => m.status !== 'afgerond') || []
+    const locatie = item.status === 'in_gebruik'
+        ? (item.huidige_medewerker?.naam || 'onbekend')
+        : (item.huidige_locatie || item.standaard_locatie || '—')
+    const ga = () => navigate(`/item/${item.qr_code}`)
+
+    return (
+        <tr
+            role="link"
+            tabIndex={0}
+            aria-label={`${item.naam} — details`}
+            onClick={ga}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ga() } }}
+            className="border-b border-overlay/10 last:border-0 cursor-pointer hover:bg-bg-hover transition-colors focus:outline-none focus:bg-bg-hover"
+        >
+            {/* Item */}
+            <td className="px-4 py-2.5">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Package size={16} className="text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-text-primary truncate">{item.naam}</span>
+                            {openMeldingen.length > 0 && (
+                                <AlertTriangle size={13} className="text-error flex-shrink-0" />
+                            )}
+                        </div>
+                        <p className="text-xs text-text-muted">{item.type}</p>
+                        {/* Subregel op mobiel: locatie/gebruiker die daar geen eigen kolom heeft */}
+                        <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1 sm:hidden">
+                            {item.status === 'in_gebruik' ? <User size={11} /> : <MapPin size={11} />}
+                            <span className="truncate">{locatie}</span>
+                        </p>
+                    </div>
+                </div>
+            </td>
+            {/* Status */}
+            <td className="px-4 py-2.5"><StatusBadge status={item.status} /></td>
+            {/* Locatie / gebruiker */}
+            <td className="px-4 py-2.5 hidden sm:table-cell">
+                <span className="flex items-center gap-1.5 text-text-secondary whitespace-nowrap">
+                    {item.status === 'in_gebruik'
+                        ? <User size={13} className="text-text-muted" />
+                        : <MapPin size={13} className="text-text-muted" />}
+                    {locatie}
+                </span>
+            </td>
+            {/* Labels */}
+            <td className="px-4 py-2.5 hidden md:table-cell">
+                {item.labels?.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                        {item.labels.map(label => (
+                            <span
+                                key={label.id}
+                                className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white whitespace-nowrap"
+                                style={{ backgroundColor: label.kleur || '#64748B' }}
+                            >
+                                {label.naam}
+                            </span>
+                        ))}
+                    </div>
+                ) : <span className="text-text-muted">—</span>}
+            </td>
+            {/* Beschikbaarheid */}
+            <td className="px-4 py-2.5 hidden lg:table-cell">
+                <BeschikbaarheidIndicator materiaalId={item.id} aantalDagen={7} compact />
+            </td>
+        </tr>
     )
 }
