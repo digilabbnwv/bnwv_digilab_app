@@ -826,6 +826,53 @@ export async function mockUpdateNaam(medewerker_id, naam) {
     saveDB(db)
 }
 
+// ── Pincode vergeten mock functies ──────────────────────────────
+// Spiegelt de Edge Function `pincode-reset`. In plaats van een e-mail wordt de
+// resetlink in de console gelogd (en teruggegeven, voor tests/ontwikkeling).
+
+const RESET_GELDIG_MS = 60 * 60 * 1000
+
+export function mockVraagPincodeResetAan(email) {
+    const db = getDB()
+    db.pincode_resets = db.pincode_resets || []
+    const med = db.medewerkers.find(m => m.email === email.toLowerCase().trim())
+    if (!med || med.gearchiveerd) return null
+
+    const nu = Date.now()
+    db.pincode_resets.forEach(r => {
+        if (r.medewerker_id === med.id && !r.gebruikt_op) r.gebruikt_op = new Date(nu).toISOString()
+    })
+    const token = uuid().replace(/-/g, '') + uuid().replace(/-/g, '')
+    db.pincode_resets.push({
+        id: uuid(), medewerker_id: med.id, token,
+        aangemaakt_op: new Date(nu).toISOString(),
+        verloopt_op: new Date(nu + RESET_GELDIG_MS).toISOString(),
+        gebruikt_op: null,
+    })
+    saveDB(db)
+    return token
+}
+
+function _vindGeldigeReset(db, token) {
+    const nu = new Date().toISOString()
+    return (db.pincode_resets || []).find(r => r.token === token && !r.gebruikt_op && r.verloopt_op > nu)
+}
+
+export function mockControleerResetToken(token) {
+    return !!_vindGeldigeReset(getDB(), token)
+}
+
+export async function mockHerstelPincode(token, nieuwePincode) {
+    const db = getDB()
+    const reset = _vindGeldigeReset(db, token)
+    if (!reset) throw new Error('Deze link is ongeldig of verlopen. Vraag een nieuwe aan.')
+    const idx = db.medewerkers.findIndex(m => m.id === reset.medewerker_id)
+    if (idx === -1) throw new Error('Medewerker niet gevonden')
+    reset.gebruikt_op = new Date().toISOString()
+    db.medewerkers[idx].pincode_hash = await hashPin(nieuwePincode)
+    saveDB(db)
+}
+
 // ── Materiaal mock functies ─────────────────────────────────────
 
 function getLabelsVoorMateriaal(materiaalId, db) {

@@ -23,6 +23,7 @@ Frontend (React)  →  Supabase Edge Function  →  Power Automate (webhook)  �
 | `agenda-sync` | Reserveringen + workshops naar Outlook-agenda's | `WEBHOOK_URL_ICT`, `WEBHOOK_URL_ERMELO`, `WEBHOOK_URL_NUNSPEET` | — |
 | `metrics-rapportage` | Periodieke week-/maandmail (pg_cron) | `WEBHOOK_URL_METRICS` | `METRICS_REPORT_SECRET` (inbound) |
 | `melding-notificatie` | Notificaties bij onderhoudsmeldingen | `WEBHOOK_URL_MELDINGEN` | — |
+| `pincode-reset` | "Pincode vergeten"-mail met eenmalige resetlink | `WEBHOOK_URL_PINCODE` (optioneel; valt terug op `WEBHOOK_URL_MELDINGEN`) | `APP_BASE_URL` |
 
 Gedeelde secrets (voor alle flows):
 
@@ -30,7 +31,7 @@ Gedeelde secrets (voor alle flows):
 |---|---|
 | `DIGILAB_WEBHOOK_SECRET` | Wordt als header `x-digilab-secret` meegestuurd; elke flow controleert deze. |
 | `TOEGESTANE_ORIGIN` | CORS-origin van de app (bijv. `https://digilabbnwv.github.io`). |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Gebruikt door `metrics-rapportage` en `melding-notificatie` om ontvangers server-side op te zoeken. |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Gebruikt door `metrics-rapportage`, `melding-notificatie` en `pincode-reset` om server-side gegevens op te zoeken. |
 
 ### Secrets zetten
 
@@ -161,6 +162,39 @@ aan. De flow hoeft dus geen ontvangers te kennen of samen te stellen.
    ```bash
    supabase functions deploy melding-notificatie --no-verify-jwt
    ```
+
+---
+
+## Pincode vergeten (`pincode-reset`)
+
+Collega's die hun pincode kwijt zijn, klikken op het inlogscherm op
+**"Pincode vergeten?"** en vullen hun e-mailadres in. De Edge Function
+`pincode-reset` mailt dan een eenmalige link (1 uur geldig) naar
+`<APP_BASE_URL>pincode-herstellen?token=…`, waar ze een nieuwe pincode kiezen.
+
+**Geen nieuwe flow nodig:** de payload heeft hetzelfde `berichten`-formaat als
+`melding-notificatie` (met `"type": "pincode_reset"`), dus de bestaande
+meldingen-flow verstuurt deze mail ook. Wil je een aparte flow (bijv. een andere
+afzender), bouw die dan volgens dezelfde stappen en zet `WEBHOOK_URL_PINCODE`.
+
+```bash
+# Database-tabel voor de resettokens
+supabase db push            # of draai supabase/migrations/20261001120000_add_pincode_resets.sql
+
+# Verplicht: basis-URL voor de link in de mail (nooit uit de client overgenomen)
+supabase secrets set APP_BASE_URL="https://digilabbnwv.github.io/bnwv_digilab_app/"
+
+# Optioneel: aparte flow
+supabase secrets set WEBHOOK_URL_PINCODE="<url-van-aparte-flow>"
+
+# Deploy zonder JWT-verificatie (de gebruiker is juist niet ingelogd)
+supabase functions deploy pincode-reset --no-verify-jwt
+```
+
+> Het inlogscherm meldt altijd "als dit adres bekend is, ontvang je een
+> e-mail", ook bij een onbekend adres. Zo is niet af te leiden wie een account
+> heeft. Per medewerker wordt maximaal één mail per 2 minuten verstuurd.
+> Controleer bij twijfel `supabase functions logs pincode-reset`.
 
 ---
 

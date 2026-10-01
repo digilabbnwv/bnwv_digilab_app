@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoginPagina from './pages/LoginPagina'
 import RegistratiePagina from './pages/RegistratiePagina'
+import PincodeVergeten from './pages/PincodeVergeten'
+import PincodeHerstellen from './pages/PincodeHerstellen'
 import Dashboard from './pages/Dashboard'
 import ItemPagina from './pages/ItemPagina'
 import MateriaalOverzicht from './pages/MateriaalOverzicht'
@@ -106,6 +108,9 @@ export default function App() {
         {/* Publieke routes */}
         <Route path="/login" element={medewerker ? <Navigate to={bestemmingNaLogin} replace /> : <LoginPagina />} />
         <Route path="/registratie" element={medewerker ? <Navigate to={bestemmingNaLogin} replace /> : <RegistratiePagina />} />
+        <Route path="/pincode-vergeten" element={medewerker ? <Navigate to={bestemmingNaLogin} replace /> : <PincodeVergeten />} />
+        {/* Bewust ook bereikbaar als je ingelogd bent: de link komt uit een e-mail. */}
+        <Route path="/pincode-herstellen" element={<PincodeHerstellen />} />
 
         {/* Beveiligde routes */}
         <Route path="/" element={<ProtectedRoute><PageLayout><Dashboard /></PageLayout></ProtectedRoute>} />

@@ -36,4 +36,35 @@ test.describe('Inloggen op Digilab', () => {
     await expect(loginHeader).toBeVisible();
   });
 
+  test('medewerker kan via "Pincode vergeten" een nieuwe pincode instellen en daarmee inloggen', async ({ page }) => {
+    // In mock-modus wordt de resetlink in de console gelogd i.p.v. gemaild.
+    const resetLink = new Promise(resolve => {
+      page.on('console', msg => {
+        const match = msg.text().match(/resetlink: (\S+)/);
+        if (match) resolve(match[1]);
+      });
+    });
+
+    await page.goto('/bnwv_digilab_app/');
+    await page.getByRole('link', { name: /pincode vergeten/i }).click();
+    await expect(page.locator('h1', { hasText: 'Pincode vergeten' })).toBeVisible();
+
+    await page.getByPlaceholder('naam@bibliotheek.nl').fill('jasper@bibliotheek.nl');
+    await page.getByRole('button', { name: /resetlink versturen/i }).click();
+    await expect(page.getByText(/ontvang je binnen enkele minuten een e-mail/i)).toBeVisible();
+
+    await page.goto(await resetLink);
+    await expect(page.locator('h1', { hasText: 'Nieuwe pincode instellen' })).toBeVisible();
+    await page.getByLabel('Nieuwe pincode (5 cijfers)').fill('54321');
+    await page.getByLabel('Herhaal nieuwe pincode').fill('54321');
+    await page.getByRole('button', { name: /pincode opslaan/i }).click();
+    await expect(page.getByText(/je pincode is gewijzigd/i)).toBeVisible();
+
+    await page.getByRole('link', { name: /naar inloggen/i }).click();
+    await page.getByPlaceholder('naam@bibliotheek.nl').fill('jasper@bibliotheek.nl');
+    await page.getByPlaceholder('•••••').fill('54321');
+    await page.getByRole('button', { name: /inloggen/i }).first().click();
+    await expect(page.getByText('Reserveren', { exact: false }).first()).toBeVisible();
+  });
+
 });

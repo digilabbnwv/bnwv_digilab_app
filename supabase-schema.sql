@@ -144,6 +144,18 @@ CREATE TABLE IF NOT EXISTS logins (
   tijdstip        TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 8b. Pincode-resettokens ("pincode vergeten"). Alleen de SHA-256-hash van het
+-- token wordt opgeslagen; 1 uur geldig, eenmalig te gebruiken. Uitsluitend
+-- toegankelijk via de service-role (Edge Function `pincode-reset`).
+CREATE TABLE IF NOT EXISTS pincode_resets (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  medewerker_id   UUID NOT NULL REFERENCES medewerkers(id) ON DELETE CASCADE,
+  token_hash      TEXT NOT NULL UNIQUE,
+  aangemaakt_op   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verloopt_op     TIMESTAMPTZ NOT NULL,
+  gebruikt_op     TIMESTAMPTZ
+);
+
 -- 9. Rapportage-ontvangers (voor de periodieke metrics-e-mail)
 CREATE TABLE IF NOT EXISTS rapportage_ontvangers (
   id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -317,6 +329,7 @@ ALTER TABLE workshop_templates  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE geplande_workshops  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE logins              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rapportage_ontvangers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pincode_resets      ENABLE ROW LEVEL SECURITY;  -- bewust zonder policies: alleen service-role
 
 ALTER TABLE lesplannen          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE doelgroepen         ENABLE ROW LEVEL SECURITY;

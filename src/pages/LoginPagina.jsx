@@ -70,7 +70,12 @@ export default function LoginPagina() {
                     </div>
 
                     <div>
-                        <label className="block text-text-secondary text-sm font-medium mb-2">Pincode</label>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-text-secondary text-sm font-medium">Pincode</label>
+                            <Link to="/pincode-vergeten" className="text-primary hover:text-primary-end text-sm font-medium transition-colors">
+                                Pincode vergeten?
+                            </Link>
+                        </div>
                         <div className="relative">
                             <input
                                 type={toonPin ? 'text' : 'password'}

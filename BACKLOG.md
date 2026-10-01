@@ -5,6 +5,15 @@ Nieuw punt? Voeg een regel toe met datum, korte omschrijving en eventuele notiti
 
 ## Open
 
+- **2026-10-01 — RLS op `medewerkers` laat anon `pincode_hash` lezen en elk record updaten**
+  Gezien bij het bouwen van "pincode vergeten". De policies `"Iedereen kan medewerkers zien"`
+  (SELECT `true`) en `"Medewerker kan eigen record updaten"` (UPDATE `true`) betekenen dat iedereen
+  met de (publieke) anon-key alle pincode-hashes kan ophalen (5 cijfers + vaste salt = binnen
+  seconden te kraken) én elke pincode direct kan overschrijven. De nieuwe `pincode-reset` Edge
+  Function is zelf veilig, maar haalt pas echt iets uit als deze gaten dicht zijn. Richting:
+  login/registratie/pincode-wijzigen volledig via de (al bestaande) `medewerker-auth` Edge Function
+  laten lopen, kolom-SELECT op `pincode_hash` intrekken en UPDATE voor anon dichtzetten.
+
 - **2026-07-29 — Lesbrieven-authoring + digitale leerlijn (grote feature)**
   Beheerders kunnen volwaardige lesbrieven maken: gestructureerde inhoud (lesomschrijving,
   leerdoelen, voorbereiding, lesverloop, differentiatie, evaluatie, tips…), échte bestands-uploads
